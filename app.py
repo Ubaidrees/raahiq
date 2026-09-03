@@ -1,9 +1,12 @@
 import streamlit as st
 import base64
+import datetime
 import plotly.graph_objects as go
 from config import API_KEY
-from utils import get_coordinates, get_all_routes, estimate_cost, get_maps_link
+from utils import get_coordinates, get_all_routes, estimate_cost, get_maps_link, match_area
 from ml import predict_traffic, load_model
+from bus_finder import find_matching_routes, enrich_journey, build_route_map
+from streamlit_folium import st_folium
 
 st.set_page_config(page_title="RaahIQ", page_icon="🗺️", layout="wide")
 
@@ -59,15 +62,6 @@ st.markdown(f"""
         padding: 25px;
         border-top: 5px solid #00bb66;
         box-shadow: 0 4px 20px rgba(0,187,102,0.15);
-        text-align: center;
-    }}
-    .route-balanced {{
-        background: white;
-        border-radius: 20px;
-        padding: 25px;
-        border-top: 5px solid #ff9900;
-        box-shadow: 0 4px 20px rgba(255,153,0,0.15);
-        text-align: center;
     }}
     .petrol-card {{
         background: white;
@@ -203,74 +197,148 @@ with tab1:
     st.markdown("<br>", unsafe_allow_html=True)
     find = st.button("🔍 Find Best Routes")
 
+    # Persist the search trigger + inputs in session_state so results survive
+    # the automatic rerun that st_folium triggers when the map component loads.
     if find:
         if start and end:
-            with st.spinner("🔍 Finding best routes..."):
-                start_coords = get_coordinates(start, API_KEY)
-                end_coords = get_coordinates(end, API_KEY)
+            st.session_state['route_search'] = {"start": start, "end": end, "time": time}
+        else:
+            st.session_state['route_search'] = None
+            st.error("⚠️ Please enter both Starting Location and Destination!")
 
+    search = st.session_state.get('route_search')
+
+    if search:
+        s_start, s_end, s_time = search["start"], search["end"], search["time"]
+
+        st.markdown(f"### 📍 {s_start}  →  {s_end}  |  ⏰ {s_time}")
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # ── Step 1: Basic bus route match — works fully offline, no API calls.
+        # top_n=15 so users see (almost) every bus serving this route and can
+        # pick whichever they prefer, instead of us picking for them. ──
+        basic_matches = find_matching_routes(s_start, s_end, top_n=15)
+
+        # ── Step 2: Try internet-dependent features (geocoding, driving, Fastest card) ──
+        internet_ok = True
+        start_coords, end_coords, f = None, None, None
+        try:
+            with st.spinner("🔍 Finding best routes..."):
+                start_coords = get_coordinates(s_start, API_KEY)
+                end_coords = get_coordinates(s_end, API_KEY)
                 if start_coords and end_coords:
                     routes = get_all_routes(tuple(start_coords), tuple(end_coords), API_KEY)
                     f = routes['fastest']
-                    c = routes['cheapest']
-                    b = routes['balanced']
-
-                    link_drive = get_maps_link(start, end, "driving")
-                    link_transit = get_maps_link(start, end, "transit")
-                    link_bike = get_maps_link(start, end, "bicycling")
-
-                    st.markdown(f"### 📍 {start}  →  {end}  |  ⏰ {time}")
-                    st.markdown("<br>", unsafe_allow_html=True)
-
-                    col1, col2, col3 = st.columns(3)
-
-                    with col1:
-                        cost = estimate_cost("Rickshaw", f['distance'])
-                        st.markdown(f"""
-                        <div class='route-fastest'>
-                            <h2 style='color:#0066ff; margin:0'>⚡ Fastest</h2>
-                            <p style='color:#999; margin:5px 0 15px 0'>Via Fastest Route</p>
-                            <p class='price' style='color:#0066ff'>{f['duration']} mins</p>
-                            <p class='stat'>📏 {f['distance']} km</p>
-                            <p class='stat'>🛺 Rickshaw</p>
-                            <p class='stat' style='color:#0066ff; font-weight:700; font-size:1.1rem'>Rs. {cost}</p>
-                            <a href='{link_drive}' target='_blank' class='maps-btn-blue'>🗺️ Open in Maps</a>
-                        </div>
-                        """, unsafe_allow_html=True)
-
-                    with col2:
-                        st.markdown(f"""
-                        <div class='route-cheapest'>
-                            <h2 style='color:#00bb66; margin:0'>💰 Cheapest</h2>
-                            <p style='color:#999; margin:5px 0 15px 0'>Via Bus Route</p>
-                            <p class='price' style='color:#00bb66'>{c['duration']} mins</p>
-                            <p class='stat'>📏 {c['distance']} km</p>
-                            <p class='stat'>🚌 Bus + Walk</p>
-                            <p class='stat' style='color:#00bb66; font-weight:700; font-size:1.1rem'>Rs. 30</p>
-                            <a href='{link_transit}' target='_blank' class='maps-btn-green'>🗺️ Open in Maps</a>
-                        </div>
-                        """, unsafe_allow_html=True)
-
-                    with col3:
-                        bike_cost = estimate_cost("Bike Taxi", b['distance'])
-                        st.markdown(f"""
-                        <div class='route-balanced'>
-                            <h2 style='color:#ff9900; margin:0'>⚖️ Balanced</h2>
-                            <p style='color:#999; margin:5px 0 15px 0'>Via Alternate Route</p>
-                            <p class='price' style='color:#ff9900'>{b['duration']} mins</p>
-                            <p class='stat'>📏 {b['distance']} km</p>
-                            <p class='stat'>🛵 Bike Taxi</p>
-                            <p class='stat' style='color:#ff9900; font-weight:700; font-size:1.1rem'>Rs. {bike_cost}</p>
-                            <a href='{link_bike}' target='_blank' class='maps-btn-orange'>🗺️ Open in Maps</a>
-                        </div>
-                        """, unsafe_allow_html=True)
-
-                    st.markdown("<br>", unsafe_allow_html=True)
-                    st.success("✅ Real routes found — Powered by OpenRouteService!")
                 else:
-                    st.error("⚠️ Location not found — please enter a valid Karachi area!")
-        else:
-            st.error("⚠️ Please enter both Starting Location and Destination!")
+                    internet_ok = False
+        except Exception as e:
+            print(f"Connectivity/route error: {e}")
+            internet_ok = False
+
+        col1, col2 = st.columns([1, 2])
+
+        with col1:
+            if f and start_coords and end_coords:
+                cost = estimate_cost("Rickshaw", f['distance'])
+                link_drive = get_maps_link(s_start, s_end, "driving")
+
+                # ── Traffic-aware addition: connect the departure time selector
+                # to the existing ML model instead of leaving it unused ──
+                current_day = datetime.datetime.now().strftime("%A")
+                matched_area = match_area(s_start, areas_list)
+                traffic_now = predict_traffic(current_day, s_time, matched_area, "Clear")
+
+                badge_style = {
+                    "Light": ("#00bb66", "🟢"),
+                    "Moderate": ("#ff9900", "🟡"),
+                    "Heavy": ("#ff4444", "🔴"),
+                }
+                badge_color, badge_emoji = badge_style.get(traffic_now, ("#999", "⚪"))
+
+                st.markdown(f"""
+                <div class='route-fastest'>
+                    <h2 style='color:#0066ff; margin:0'>⚡ Fastest</h2>
+                    <p style='color:#999; margin:5px 0 15px 0'>Via Fastest Route</p>
+                    <p class='price' style='color:#0066ff'>{f['duration']} mins</p>
+                    <p class='stat'>📏 {f['distance']} km</p>
+                    <p class='stat'>🛺 Rickshaw</p>
+                    <p class='stat' style='color:#0066ff; font-weight:700; font-size:1.1rem'>Rs. {cost}</p>
+                    <p class='stat' style='color:{badge_color}; font-weight:700; margin-top:10px;'>{badge_emoji} {traffic_now} traffic expected at {s_time}</p>
+                    <a href='{link_drive}' target='_blank' class='maps-btn-blue'>🗺️ Open in Maps</a>
+                </div>
+                """, unsafe_allow_html=True)
+
+                # Suggest a better nearby departure time if one exists with lower traffic
+                time_order = ["7:00 AM", "8:00 AM", "9:00 AM", "10:00 AM", "12:00 PM", "2:00 PM", "5:00 PM", "7:00 PM"]
+                traffic_rank = {"Light": 1, "Moderate": 2, "Heavy": 3}
+                if s_time in time_order:
+                    idx = time_order.index(s_time)
+                    for candidate_time in time_order[idx + 1: idx + 4]:
+                        candidate_result = predict_traffic(current_day, candidate_time, matched_area, "Clear")
+                        if traffic_rank[candidate_result] < traffic_rank[traffic_now]:
+                            st.info(f"💡 Try **{candidate_time}** instead — traffic is expected to drop to **{candidate_result}**.")
+                            break
+            else:
+                st.markdown("""
+                <div class='route-fastest'>
+                    <h2 style='color:#999; margin:0'>⚡ Fastest</h2>
+                    <p style='color:#999; margin:10px 0'>📶 Needs internet connection</p>
+                </div>
+                """, unsafe_allow_html=True)
+
+        with col2:
+            st.markdown("#### 🚌 Bus Route Options")
+
+            if not internet_ok:
+                st.warning("📶 No internet connection detected — showing offline bus route matches only (route number & stops). Connect to internet for walking distance and live map.")
+
+            if basic_matches:
+                option_labels = [f"{m['route_id']} · {m['category']}" for m in basic_matches]
+                chosen_label = st.selectbox(
+                    f"🔍 Found {len(basic_matches)} bus route(s) serving this area — select one to see details:",
+                    option_labels,
+                    key="chosen_bus_route",
+                )
+                chosen_match = basic_matches[option_labels.index(chosen_label)]
+
+                if internet_ok and start_coords and end_coords:
+                    with st.spinner("🚌 Getting walking distance & map for this route..."):
+                        enriched = enrich_journey(chosen_match, start_coords, end_coords, API_KEY)
+
+                    if enriched:
+                        walk1_min = enriched['walk_to_stop']['duration_min']
+                        walk2_min = enriched['walk_to_dest']['duration_min']
+                        walk1_text = "" if walk1_min <= 1 else f" (walk {walk1_min} min)"
+                        walk2_text = "" if walk2_min <= 1 else f", then walk {walk2_min} min"
+
+                        st.markdown(f"""
+                        <div class='route-cheapest' style='padding:18px 25px; margin-top:12px;'>
+                            <p style='color:#00bb66; font-weight:700; margin:0 0 6px 0'>Route {enriched['route_id']} ({enriched['category']})</p>
+                            <p class='stat'>🚏 Board at: <b>{enriched['start_stop']}</b>{walk1_text}</p>
+                            <p class='stat'>🛑 Alight at: <b>{enriched['end_stop']}</b>{walk2_text}</p>
+                            <p class='stat' style='color:#00bb66; font-weight:700; font-size:1.05rem'>⏱️ Total est. time: {enriched['total_time_min']} mins</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                        st.markdown("##### 🗺️ Route map")
+                        route_map = build_route_map(start_coords, end_coords, enriched)
+                        st_folium(route_map, width=700, height=400, key="route_map")
+                    else:
+                        st.caption(f"📍 Board near **{chosen_match['start_stop']}**, alight near **{chosen_match['end_stop']}** — couldn't fetch live walking distance/map for this stop right now.")
+                else:
+                    st.markdown(f"""
+                    <div class='route-cheapest' style='padding:18px 25px; margin-top:12px;'>
+                        <p style='color:#00bb66; font-weight:700; margin:0 0 6px 0'>Route {chosen_match['route_id']} ({chosen_match['category']})</p>
+                        <p class='stat'>🚏 Board near: <b>{chosen_match['start_stop']}</b></p>
+                        <p class='stat'>🛑 Alight near: <b>{chosen_match['end_stop']}</b></p>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.info("🚌 No direct bus route found between these two areas — try nearby major roads or landmarks (e.g. a chorangi or well-known stop name).")
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        if internet_ok:
+            st.success("✅ Real routes found — Powered by OpenRouteService!")
 
 # ─── TAB 2 — Traffic AI ───
 with tab2:
