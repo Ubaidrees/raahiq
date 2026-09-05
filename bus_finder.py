@@ -90,6 +90,8 @@ def find_matching_routes(start_location, end_location, routes_path="bus_routes.j
             "direction_ok": start_idx < end_idx,
             "stops_between": abs(end_idx - start_idx),
             "confidence": round((start_score + end_score) / 2, 2),
+            "start_score": round(start_score, 2),
+            "end_score": round(end_score, 2),
         })
 
     results.sort(key=lambda r: (-r["confidence"], not r["direction_ok"], r["stops_between"]))
@@ -102,18 +104,38 @@ def enrich_journey(match, start_coords, end_coords, api_key):
     walking + bus legs for it. Only call this for the route the user actually
     selects, to avoid burning API calls on every candidate.
 
+    If the matched stop name is nearly identical to what the user typed
+    (e.g. user typed "ayesha manzil" and the stop is "Aisha Manzil"), we skip
+    re-geocoding that end separately and just reuse the user's own coordinates.
+    Independently geocoding two near-identical spellings can otherwise return
+    slightly different points and produce a bogus "extra walk" for what is
+    really the same place.
+
     Returns an enriched journey dict, or None if any leg couldn't be computed
     (e.g. no internet, or a stop couldn't be geocoded).
     """
-    stop_start_coords = geocode_stop(match["start_stop"], api_key)
-    stop_end_coords = geocode_stop(match["end_stop"], api_key)
-    if not stop_start_coords or not stop_end_coords:
+    NAME_MATCH_THRESHOLD = 0.85
+    ZERO_LEG = {"distance_km": 0.0, "duration_min": 0}
+
+    if match.get("start_score", 0) >= NAME_MATCH_THRESHOLD:
+        stop_start_coords = start_coords
+        walk1 = ZERO_LEG
+    else:
+        stop_start_coords = geocode_stop(match["start_stop"], api_key)
+        walk1 = get_walking_leg(tuple(start_coords), tuple(stop_start_coords), api_key) if stop_start_coords else None
+
+    if match.get("end_score", 0) >= NAME_MATCH_THRESHOLD:
+        stop_end_coords = end_coords
+        walk2 = ZERO_LEG
+    else:
+        stop_end_coords = geocode_stop(match["end_stop"], api_key)
+        walk2 = get_walking_leg(tuple(stop_end_coords), tuple(end_coords), api_key) if stop_end_coords else None
+
+    if not stop_start_coords or not stop_end_coords or not walk1 or not walk2:
         return None
 
-    walk1 = get_walking_leg(tuple(start_coords), tuple(stop_start_coords), api_key)
     bus_leg = get_bus_segment_estimate(tuple(stop_start_coords), tuple(stop_end_coords), api_key)
-    walk2 = get_walking_leg(tuple(stop_end_coords), tuple(end_coords), api_key)
-    if not walk1 or not bus_leg or not walk2:
+    if not bus_leg:
         return None
 
     return {
