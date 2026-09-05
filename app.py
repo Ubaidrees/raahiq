@@ -2,11 +2,12 @@ import streamlit as st
 import base64
 import datetime
 import plotly.graph_objects as go
-from config import API_KEY
+from config import API_KEY, GMAIL_ADDRESS, GMAIL_APP_PASSWORD
 from utils import get_coordinates, get_all_routes, estimate_cost, get_maps_link, match_area
 from ml import predict_traffic, load_model
 from bus_finder import find_matching_routes, enrich_journey, build_route_map
 from streamlit_folium import st_folium
+from feedback import send_feedback_email
 
 st.set_page_config(page_title="RaahIQ", page_icon="🗺️", layout="wide")
 
@@ -171,6 +172,23 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+# ─── Sidebar: Feedback (always visible, regardless of tab) ───
+with st.sidebar:
+    st.markdown("### 💬 Feedback / Review")
+    st.caption("Koi route galat lage ya koi masla ho to yahan likh dein — humein seedha email mil jayega.")
+    fb_text = st.text_area("Aapka feedback", placeholder="e.g. Route X-8 ka stop galat hai...", key="fb_text")
+    fb_email = st.text_input("Email (optional, agar reply chahiye)", key="fb_email")
+    if st.button("📩 Submit Feedback"):
+        if fb_text.strip():
+            try:
+                send_feedback_email(fb_text, fb_email, GMAIL_ADDRESS, GMAIL_APP_PASSWORD)
+                st.success("✅ Shukriya! Aapka feedback mil gaya.")
+            except Exception as e:
+                print(f"Feedback email error: {e}")
+                st.error("⚠️ Feedback bhejte waqt masla aaya — dobara try karein.")
+        else:
+            st.warning("Pehle apna feedback likhein.")
+
 # Tabs
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "🗺️ Route Planner",
@@ -220,7 +238,9 @@ with tab1:
         basic_matches = find_matching_routes(s_start, s_end, top_n=15)
 
         # ── Step 2: Try internet-dependent features (geocoding, driving, Fastest card) ──
+        from openrouteservice.exceptions import ApiError
         internet_ok = True
+        rate_limited = False
         start_coords, end_coords, f = None, None, None
         try:
             with st.spinner("🔍 Finding best routes..."):
@@ -231,6 +251,10 @@ with tab1:
                     f = routes['fastest']
                 else:
                     internet_ok = False
+        except ApiError as e:
+            if getattr(e, "status", None) == 429:
+                rate_limited = True
+            internet_ok = False
         except Exception as e:
             print(f"Connectivity/route error: {e}")
             internet_ok = False
@@ -290,7 +314,10 @@ with tab1:
             st.markdown("#### 🚌 Bus Route Options")
 
             if not internet_ok:
-                st.warning("📶 No internet connection detected — showing offline bus route matches only (route number & stops). Connect to internet for walking distance and live map.")
+                if rate_limited:
+                    st.warning("⏳ Bohot zyada log ek sath route dhoond rahe hain — server thoda busy hai. 1-2 minute baad dobara try karein.")
+                else:
+                    st.warning("📶 No internet connection detected — showing offline bus route matches only (route number & stops). Connect to internet for walking distance and live map.")
 
             if basic_matches:
                 option_labels = [f"{m['route_id']} · {m['category']}" for m in basic_matches]
@@ -302,8 +329,15 @@ with tab1:
                 chosen_match = basic_matches[option_labels.index(chosen_label)]
 
                 if internet_ok and start_coords and end_coords:
-                    with st.spinner("🚌 Getting walking distance & map for this route..."):
-                        enriched = enrich_journey(chosen_match, start_coords, end_coords, API_KEY)
+                    enriched, route_rate_limited = None, False
+                    try:
+                        with st.spinner("🚌 Getting walking distance & map for this route..."):
+                            enriched = enrich_journey(chosen_match, start_coords, end_coords, API_KEY)
+                    except ApiError as e:
+                        if getattr(e, "status", None) == 429:
+                            route_rate_limited = True
+                    except Exception as e:
+                        print(f"Enrich journey error: {e}")
 
                     if enriched:
                         walk1_min = enriched['walk_to_stop']['duration_min']
@@ -324,7 +358,11 @@ with tab1:
                         route_map = build_route_map(start_coords, end_coords, enriched)
                         st_folium(route_map, width=700, height=400, key="route_map")
                     else:
-                        st.caption(f"📍 Board near **{chosen_match['start_stop']}**, alight near **{chosen_match['end_stop']}** — couldn't fetch live walking distance/map for this stop right now.")
+                        if route_rate_limited:
+                            st.caption("⏳ Server thoda busy hai — thodi der baad try karein. Route info: Board near "
+                                       f"**{chosen_match['start_stop']}**, alight near **{chosen_match['end_stop']}**.")
+                        else:
+                            st.caption(f"📍 Board near **{chosen_match['start_stop']}**, alight near **{chosen_match['end_stop']}** — couldn't fetch live walking distance/map for this stop right now.")
                 else:
                     st.markdown(f"""
                     <div class='route-cheapest' style='padding:18px 25px; margin-top:12px;'>

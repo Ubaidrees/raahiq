@@ -2,6 +2,7 @@ import json
 from difflib import SequenceMatcher
 import streamlit as st
 import openrouteservice
+from openrouteservice.exceptions import ApiError
 import folium
 
 BUS_SLOWDOWN_FACTOR = 1.35  # buses are slower than cars due to frequent stops/boarding
@@ -196,6 +197,11 @@ def geocode_stop(stop_name, api_key):
             print(f"Stop geocoding error ({stop_name}): resolved outside Karachi ({coords}), rejecting")
             return None
         return coords
+    except ApiError as e:
+        if getattr(e, "status", None) == 429:
+            raise
+        print(f"Stop geocoding error ({stop_name}): {e}")
+        return None
     except Exception as e:
         print(f"Stop geocoding error ({stop_name}): {e}")
         return None
@@ -209,6 +215,11 @@ def get_walking_leg(from_coords, to_coords, api_key):
         r = client.directions([from_coords, to_coords], profile='foot-walking', format='geojson')
         s = r['features'][0]['properties']['summary']
         return {'distance_km': round(s['distance'] / 1000, 2), 'duration_min': round(s['duration'] / 60)}
+    except ApiError as e:
+        if getattr(e, "status", None) == 429:
+            raise
+        print(f"Walking leg error: {e}")
+        return None
     except Exception as e:
         print(f"Walking leg error: {e}")
         return None
@@ -227,6 +238,11 @@ def get_bus_segment_estimate(from_coords, to_coords, api_key):
         distance_km = round(s['distance'] / 1000, 2)
         duration_min = round((s['duration'] / 60) * BUS_SLOWDOWN_FACTOR)
         return {'distance_km': distance_km, 'duration_min': duration_min}
+    except ApiError as e:
+        if getattr(e, "status", None) == 429:
+            raise
+        print(f"Bus segment estimate error: {e}")
+        return None
     except Exception as e:
         print(f"Bus segment estimate error: {e}")
         return None

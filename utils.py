@@ -1,5 +1,6 @@
 import streamlit as st
 import openrouteservice
+from openrouteservice.exceptions import ApiError
 from difflib import SequenceMatcher
 
 # Karachi's approximate bounding box — used to keep geocoding results local
@@ -33,6 +34,11 @@ def get_coordinates(place_name, api_key):
             print(f"Coordinates Error: '{place_name}' resolved outside Karachi ({coords}), rejecting")
             return None
         return coords
+    except ApiError as e:
+        if getattr(e, "status", None) == 429:
+            raise  # let the caller show a "server busy" message instead of "no internet"
+        print(f"Coordinates Error: {e}")
+        return None
     except Exception as e:
         print(f"Coordinates Error: {e}")
         return None
