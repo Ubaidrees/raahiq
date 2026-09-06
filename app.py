@@ -3,9 +3,9 @@ import base64
 import datetime
 import plotly.graph_objects as go
 from config import API_KEY, GMAIL_ADDRESS, GMAIL_APP_PASSWORD
-from utils import get_coordinates, get_all_routes, estimate_cost, get_maps_link, match_area
+from utils import get_coordinates, get_fastest_route, estimate_cost, get_maps_link, match_area
 from ml import predict_traffic, load_model
-from bus_finder import find_matching_routes, enrich_journey, build_route_map
+from bus_finder import find_matching_routes, find_proximity_routes, find_local_coords, enrich_journey, build_route_map
 from streamlit_folium import st_folium
 from feedback import send_feedback_email
 
@@ -219,7 +219,11 @@ with tab1:
     # the automatic rerun that st_folium triggers when the map component loads.
     if find:
         if start and end:
-            st.session_state['route_search'] = {"start": start, "end": end, "time": time}
+            st.session_state['route_search'] = {
+                "start": " ".join(start.split()),
+                "end": " ".join(end.split()),
+                "time": time,
+            }
         else:
             st.session_state['route_search'] = None
             st.error("⚠️ Please enter both Starting Location and Destination!")
@@ -239,20 +243,33 @@ with tab1:
 
         # ── Step 2: Try internet-dependent features (geocoding, driving, Fastest card) ──
         from openrouteservice.exceptions import ApiError
+        from utils import is_quota_or_rate_limit_error
         internet_ok = True
         rate_limited = False
         start_coords, end_coords, f = None, None, None
         try:
             with st.spinner("🔍 Finding best routes..."):
-                start_coords = get_coordinates(s_start, API_KEY)
-                end_coords = get_coordinates(s_end, API_KEY)
+                # Check our own already-geocoded stop database first — avoids a
+                # live ORS call for the very common case where the user typed
+                # a well-known landmark/chorangi that's already one of our stops.
+                start_coords = find_local_coords(s_start) or get_coordinates(s_start, API_KEY)
+                end_coords = find_local_coords(s_end) or get_coordinates(s_end, API_KEY)
                 if start_coords and end_coords:
-                    routes = get_all_routes(tuple(start_coords), tuple(end_coords), API_KEY)
-                    f = routes['fastest']
+                    f = get_fastest_route(tuple(start_coords), tuple(end_coords), API_KEY)
+                    # Now that we have real coordinates, also check for routes with a
+                    # NEARBY stop even if its name doesn't textually match what was typed
+                    # (e.g. "Star Gate" query catching a route that only lists "Colony Gate").
+                    seen_ids = {m["route_id"] for m in basic_matches}
+                    proximity_matches = find_proximity_routes(start_coords, end_coords, top_n=15)
+                    for pm in proximity_matches:
+                        if pm["route_id"] not in seen_ids:
+                            basic_matches.append(pm)
+                            seen_ids.add(pm["route_id"])
+                    basic_matches.sort(key=lambda r: (-r["confidence"], not r["direction_ok"], r["stops_between"]))
                 else:
                     internet_ok = False
         except ApiError as e:
-            if getattr(e, "status", None) == 429:
+            if is_quota_or_rate_limit_error(e):
                 rate_limited = True
             internet_ok = False
         except Exception as e:
@@ -315,12 +332,15 @@ with tab1:
 
             if not internet_ok:
                 if rate_limited:
-                    st.warning("⏳ Bohot zyada log ek sath route dhoond rahe hain — server thoda busy hai. 1-2 minute baad dobara try karein.")
+                    st.warning("⏳ Map/route service ka daily limit abhi khatam ho gaya hai (bohot zyada log use kar rahe hain) — kal wapas try karein ya thodi der baad. Neeche bus route names phir bhi dikh rahe hain.")
                 else:
                     st.warning("📶 No internet connection detected — showing offline bus route matches only (route number & stops). Connect to internet for walking distance and live map.")
 
             if basic_matches:
-                option_labels = [f"{m['route_id']} · {m['category']}" for m in basic_matches]
+                option_labels = [
+                    f"{m['route_id']} · {m['category']}" + (" (nearby stop)" if m.get("match_type") == "proximity" else "")
+                    for m in basic_matches
+                ]
                 chosen_label = st.selectbox(
                     f"🔍 Found {len(basic_matches)} bus route(s) serving this area — select one to see details:",
                     option_labels,
@@ -334,7 +354,7 @@ with tab1:
                         with st.spinner("🚌 Getting walking distance & map for this route..."):
                             enriched = enrich_journey(chosen_match, start_coords, end_coords, API_KEY)
                     except ApiError as e:
-                        if getattr(e, "status", None) == 429:
+                        if is_quota_or_rate_limit_error(e):
                             route_rate_limited = True
                     except Exception as e:
                         print(f"Enrich journey error: {e}")

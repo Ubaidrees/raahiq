@@ -8,6 +8,16 @@ from difflib import SequenceMatcher
 KARACHI_BOUNDS = {"min_lon": 66.60, "max_lon": 67.50, "min_lat": 24.70, "max_lat": 25.20}
 KARACHI_FOCUS = [67.0011, 24.8607]  # roughly central Karachi, used to bias ranking
 
+def is_quota_or_rate_limit_error(e):
+    """
+    True if this ORS ApiError indicates the request quota/rate limit was hit —
+    covers both 429 (too many requests per minute) and 403 with 'Quota exceeded'
+    (daily/monthly free-tier quota used up). Both mean "try again later", not
+    "no internet".
+    """
+    return getattr(e, "status", None) in (403, 429)
+
+
 def get_client(api_key):
     return openrouteservice.Client(key=api_key)
 
@@ -18,6 +28,7 @@ def _within_karachi(coords):
 
 @st.cache_data
 def get_coordinates(place_name, api_key):
+    place_name = " ".join(place_name.split()).lower()  # normalize for better cache hit rate across users
     try:
         client = get_client(api_key)
         result = client.pelias_search(
@@ -35,7 +46,7 @@ def get_coordinates(place_name, api_key):
             return None
         return coords
     except ApiError as e:
-        if getattr(e, "status", None) == 429:
+        if is_quota_or_rate_limit_error(e):
             raise  # let the caller show a "server busy" message instead of "no internet"
         print(f"Coordinates Error: {e}")
         return None
@@ -44,43 +55,29 @@ def get_coordinates(place_name, api_key):
         return None
 
 @st.cache_data
-def get_all_routes(start_coords, end_coords, api_key):
+def get_fastest_route(start_coords, end_coords, api_key):
+    """
+    Fetch only the fastest driving route — this is the only route type the UI
+    actually displays. (Previously this fetched fastest/cheapest/balanced —
+    3 ORS calls per search — even though 2 of those were never shown, which
+    wasted a third of our free-tier quota on every single search.)
+    """
     client = get_client(api_key)
-    routes = {}
-
     try:
-        r1 = client.directions([start_coords, end_coords],
+        r = client.directions([start_coords, end_coords],
                                profile='driving-car',
                                format='geojson',
                                preference='fastest')
-        s1 = r1['features'][0]['properties']['summary']
-        routes['fastest'] = {'distance': round(s1['distance']/1000, 1), 'duration': round(s1['duration']/60)}
+        s = r['features'][0]['properties']['summary']
+        return {'distance': round(s['distance'] / 1000, 1), 'duration': round(s['duration'] / 60)}
+    except ApiError as e:
+        if is_quota_or_rate_limit_error(e):
+            raise
+        print(f"Fastest route error: {e}")
+        return None
     except Exception as e:
-        print(f"Route 1 Error: {e}")
-        routes['fastest'] = {'distance': 10, 'duration': 30}
-
-    try:
-        r2 = client.directions([start_coords, end_coords],
-                               profile='driving-car',
-                               format='geojson',
-                               preference='shortest')
-        s2 = r2['features'][0]['properties']['summary']
-        routes['cheapest'] = {'distance': round(s2['distance']/1000, 1), 'duration': round(s2['duration']/60)}
-    except Exception as e:
-        print(f"Route 2 Error: {e}")
-        routes['cheapest'] = {'distance': 12, 'duration': 45}
-
-    try:
-        r3 = client.directions([start_coords, end_coords],
-                               profile='cycling-regular',
-                               format='geojson')
-        s3 = r3['features'][0]['properties']['summary']
-        routes['balanced'] = {'distance': round(s3['distance']/1000, 1), 'duration': round(s3['duration']/60)}
-    except Exception as e:
-        print(f"Route 3 Error: {e}")
-        routes['balanced'] = {'distance': 11, 'duration': 40}
-
-    return routes
+        print(f"Fastest route error: {e}")
+        return None
 
 def estimate_cost(mode, distance):
     if mode == "Rickshaw":
