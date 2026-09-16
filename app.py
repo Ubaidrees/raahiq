@@ -1,158 +1,221 @@
 import streamlit as st
-import base64
 import datetime
 import plotly.graph_objects as go
 from config import API_KEY, GMAIL_ADDRESS, GMAIL_APP_PASSWORD
 from utils import get_coordinates, get_fastest_route, estimate_cost, get_maps_link, match_area
 from ml import predict_traffic, load_model
-from bus_finder import find_matching_routes, find_proximity_routes, find_local_coords, enrich_journey, build_route_map
+from bus_finder import find_matching_routes, find_proximity_routes, find_local_coords, enrich_journey, build_route_map, load_bus_routes
 from streamlit_folium import st_folium
 from feedback import send_feedback_email
+from translations import get_translator
 
 st.set_page_config(page_title="RaahIQ", page_icon="🗺️", layout="wide")
+
+# ─── Language toggle (English / Urdu) ───
+if "lang" not in st.session_state:
+    st.session_state["lang"] = "en"
+
+_lang_col1, _lang_col2 = st.columns([6, 1])
+with _lang_col2:
+    _lang_choice = st.radio("🌐", ["EN", "اردو"], horizontal=True, label_visibility="collapsed", key="lang_toggle")
+    st.session_state["lang"] = "en" if _lang_choice == "EN" else "ur"
+
+lang = st.session_state["lang"]
+t = get_translator(lang)
+
+if lang == "ur":
+    st.markdown("""
+    <style>
+    html, body, [class*="css"], .stApp, p, span, div, label,
+    h1, h2, h3, h4, .stat, .price, .route-badge,
+    .stMarkdown, .stButton button, .stSelectbox, .stRadio,
+    .stTextInput input, .stTextArea textarea, .stCaption {
+        font-family: 'Noto Nastaliq Urdu', 'Manrope', sans-serif !important;
+        line-height: 2.1 !important;
+    }
+    .header h1 { font-family: 'Space Grotesk', sans-serif !important; }
+    </style>
+    """, unsafe_allow_html=True)
 
 traffic_model, metadata = load_model()
 days_list = metadata['days']
 areas_list = metadata['areas']
 weather_list = metadata['weather']
 
-def get_base64_image(image_path):
-    try:
-        with open(image_path, "rb") as f:
-            return base64.b64encode(f.read()).decode()
-    except Exception as e:
-        print(f"Image Error: {e}")
-        return ""
+# Route-category colors lifted from the real Karachi transit-guide signage
+# this app's data was compiled from — makes the color carry information
+# (which kind of bus) instead of being pure decoration.
+CATEGORY_COLORS = {
+    "Mini Bus": "#12857A",
+    "Coach": "#6B4FA0",
+    "Other Bus": "#D4901F",
+    "Red Bus": "#C1443D",
+    "EV Bus": "#2E9B63",
+    "BRT": "#2E5FA3",
+}
 
-map_bg = get_base64_image("map_bg.png")
-
-st.markdown(f"""
+st.markdown("""
 <style>
-    .stApp {{ background: #f0f4f8; }}
-    .header {{
-        background: linear-gradient(135deg, rgba(0,102,255,0.65), rgba(0,153,255,0.65)),
-                    url("data:image/png;base64,{map_bg}") center/cover no-repeat;
-        padding: 50px 40px;
-        border-radius: 20px;
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Manrope:wght@400;500;600;700&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap');
+
+    :root {
+        --teal-900: #0B4F4A;
+        --teal-700: #0F6F68;
+        --teal-600: #12857A;
+        --amber-500: #E8A33D;
+        --amber-600: #C98826;
+        --paper: #FAF6EF;
+        --card: #FFFFFF;
+        --ink: #22221D;
+        --ink-soft: #6B6A61;
+        --line: #E7E1D3;
+    }
+
+    html, body, [class*="css"] { font-family: 'Manrope', sans-serif; }
+    .stApp { background: var(--paper); }
+
+    h1, h2, h3, .price, .route-badge-number {
+        font-family: 'Space Grotesk', sans-serif !important;
+    }
+
+    /* ── Header: solid teal field with a dotted route-line motif instead
+       of a photo+gradient hero — lighter to load, and grounded in the
+       idea of a transit line rather than a generic map wash. ── */
+    .header {
+        background:
+            radial-gradient(circle at 8px 8px, rgba(255,255,255,0.14) 1.5px, transparent 1.5px),
+            linear-gradient(135deg, var(--teal-900), var(--teal-700));
+        background-size: 22px 22px, cover;
+        padding: 46px 40px;
+        border-radius: 18px;
         text-align: center;
-        margin-bottom: 30px;
-        box-shadow: 0 10px 30px rgba(0,102,255,0.3);
+        margin-bottom: 28px;
         position: relative;
         overflow: hidden;
-    }}
-    .header h1 {{ color: white; font-size: 3rem; font-weight: 900; margin: 0; letter-spacing: 2px; text-shadow: 0 2px 10px rgba(0,0,0,0.3); }}
-    .header p {{ color: rgba(255,255,255,0.95); font-size: 1.1rem; margin: 10px 0 0 0; letter-spacing: 4px; text-transform: uppercase; text-shadow: 0 2px 8px rgba(0,0,0,0.3); }}
-    .card {{
-        background: white;
+        border-bottom: 4px solid var(--amber-500);
+    }
+    .header h1 {
+        color: white; font-size: 2.6rem; font-weight: 700; margin: 0;
+        letter-spacing: 0.5px; font-family: 'Space Grotesk', sans-serif;
+    }
+    .header p {
+        color: rgba(255,255,255,0.88); font-size: 1rem; margin: 8px 0 0 0;
+        font-weight: 500;
+    }
+
+    .card {
+        background: var(--card);
         padding: 25px;
-        border-radius: 20px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        border-radius: 14px;
+        border: 1px solid var(--line);
         margin-bottom: 20px;
-    }}
-    .route-fastest {{
-        background: white;
-        border-radius: 20px;
-        padding: 25px;
-        border-top: 5px solid #0066ff;
-        box-shadow: 0 4px 20px rgba(0,102,255,0.15);
+    }
+
+    /* ── Fastest card: styled like a ticket stub, since that's literally
+       the subject matter — a dashed perforation instead of a generic
+       colored top-border card. ── */
+    .route-fastest {
+        background: var(--card);
+        border-radius: 16px 16px 4px 4px;
+        border: 1px solid var(--line);
+        padding: 22px 24px 0 24px;
         text-align: center;
-    }}
-    .route-cheapest {{
-        background: white;
-        border-radius: 20px;
-        padding: 25px;
-        border-top: 5px solid #00bb66;
-        box-shadow: 0 4px 20px rgba(0,187,102,0.15);
-    }}
-    .petrol-card {{
-        background: white;
-        border-radius: 15px;
-        padding: 25px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-        border-left: 5px solid #ff4500;
+        position: relative;
+    }
+    .route-fastest .stub-bottom {
+        border-top: 2px dashed var(--line);
+        margin-top: 18px;
+        padding: 16px 0 20px 0;
+    }
+
+    .route-cheapest {
+        background: var(--card);
+        border-radius: 4px 14px 14px 4px;
+        border: 1px solid var(--line);
+        border-left: 5px solid var(--teal-600);
+        padding: 20px 22px;
+    }
+
+    .petrol-card {
+        background: var(--card);
+        border-radius: 4px 14px 14px 4px;
+        padding: 22px;
+        border: 1px solid var(--line);
+        border-left: 5px solid var(--amber-500);
         margin-top: 15px;
-    }}
-    .maps-btn-blue {{
+    }
+
+    .maps-btn-blue, .maps-btn-green, .maps-btn-orange {
         display: inline-block;
-        margin-top: 15px;
-        padding: 10px 25px;
-        background: linear-gradient(90deg, #0066ff, #0099ff);
+        margin: 4px 0 18px 0;
+        padding: 9px 22px;
+        background: var(--teal-700);
         color: white !important;
-        border-radius: 25px;
+        border-radius: 8px;
         text-decoration: none !important;
-        font-weight: 700;
-        font-size: 0.9rem;
-    }}
-    .maps-btn-green {{
-        display: inline-block;
-        margin-top: 15px;
-        padding: 10px 25px;
-        background: linear-gradient(90deg, #00bb66, #00dd77);
-        color: white !important;
-        border-radius: 25px;
-        text-decoration: none !important;
-        font-weight: 700;
-        font-size: 0.9rem;
-    }}
-    .maps-btn-orange {{
-        display: inline-block;
-        margin-top: 15px;
-        padding: 10px 25px;
-        background: linear-gradient(90deg, #ff9900, #ffbb00);
-        color: white !important;
-        border-radius: 25px;
-        text-decoration: none !important;
-        font-weight: 700;
-        font-size: 0.9rem;
-    }}
-    .stTextInput input {{
-        border-radius: 10px !important;
-        border: 2px solid #e0e0e0 !important;
-        padding: 12px !important;
+        font-weight: 600;
+        font-size: 0.88rem;
+    }
+
+    .stTextInput input, .stTextArea textarea {
+        border-radius: 8px !important;
+        border: 1.5px solid var(--line) !important;
+        padding: 11px !important;
         font-size: 1rem !important;
-    }}
-    .stButton button {{
-        background: linear-gradient(90deg, #0066ff, #0099ff) !important;
-        color: white !important;
-        border-radius: 12px !important;
-        padding: 14px 40px !important;
-        font-size: 1.1rem !important;
+    }
+    .stButton button {
+        background: var(--amber-500) !important;
+        color: var(--ink) !important;
+        border-radius: 8px !important;
+        padding: 13px 40px !important;
+        font-size: 1.05rem !important;
         font-weight: 700 !important;
         border: none !important;
         width: 100% !important;
-    }}
-    .stSelectbox div[data-baseweb="select"] {{
-        cursor: pointer !important;
-    }}
-    .stSelectbox div[data-baseweb="select"] * {{
-        cursor: pointer !important;
-    }}
-    .stTabs [data-baseweb="tab-list"] {{
-        background: white !important;
-        border-radius: 15px !important;
-        padding: 5px !important;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.08) !important;
-        gap: 5px !important;
-    }}
-    .stTabs [data-baseweb="tab"] {{
-        border-radius: 10px !important;
-        font-weight: 700 !important;
-        font-size: 1rem !important;
-        padding: 10px 25px !important;
-        letter-spacing: 0.5px !important;
-    }}
-    .stTabs [aria-selected="true"] {{
-        background: linear-gradient(90deg, #0066ff, #0099ff) !important;
+        transition: background 0.15s ease;
+    }
+    .stButton button:hover { background: var(--amber-600) !important; }
+
+    .stSelectbox div[data-baseweb="select"] { cursor: pointer !important; }
+    .stSelectbox div[data-baseweb="select"] * { cursor: pointer !important; }
+
+    .stTabs [data-baseweb="tab-list"] {
+        background: transparent !important;
+        border-bottom: 1.5px solid var(--line) !important;
+        gap: 4px !important;
+    }
+    .stTabs [data-baseweb="tab"] {
+        border-radius: 8px 8px 0 0 !important;
+        font-weight: 600 !important;
+        font-size: 0.98rem !important;
+        padding: 10px 22px !important;
+        color: var(--ink-soft) !important;
+    }
+    .stTabs [aria-selected="true"] {
+        background: var(--teal-600) !important;
         color: white !important;
-    }}
-    label {{ color: #333 !important; font-weight: 600 !important; font-size: 0.95rem !important; }}
-    .stat {{ font-size: 0.95rem; color: #666; margin: 6px 0; }}
-    .price {{ font-size: 1.6rem; font-weight: 900; margin: 10px 0; }}
+    }
+
+    label { color: var(--ink) !important; font-weight: 600 !important; font-size: 0.93rem !important; }
+    .stat { font-size: 0.95rem; color: var(--ink-soft); margin: 6px 0; }
+    .price { font-size: 1.7rem; font-weight: 700; margin: 8px 0; }
+
+    /* Bus route number shown as a signage-style badge */
+    .route-badge {
+        display: inline-block;
+        font-family: 'Space Grotesk', sans-serif;
+        font-weight: 700;
+        font-size: 0.95rem;
+        padding: 3px 12px;
+        border-radius: 6px;
+        color: white;
+        margin-bottom: 6px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
 # Header
-st.markdown("""
+st.markdown(f"""
 <div class='header'>
     <div style="position:relative; z-index:1;">
         <div style="display:inline-flex; align-items:center; gap:15px; margin-bottom:10px;">
@@ -167,53 +230,71 @@ st.markdown("""
             </svg>
             <h1>RaahIQ</h1>
         </div>
-        <p>Karachi ka Smart AI Commute Planner</p>
+        <p>{t("app_subtitle")}</p>
     </div>
 </div>
 """, unsafe_allow_html=True)
 
 # ─── Sidebar: Feedback (always visible, regardless of tab) ───
 with st.sidebar:
-    st.markdown("### 💬 Feedback / Review")
-    st.caption("Koi route galat lage ya koi masla ho to yahan likh dein — humein seedha email mil jayega.")
-    fb_text = st.text_area("Aapka feedback", placeholder="e.g. Route X-8 ka stop galat hai...", key="fb_text")
-    fb_email = st.text_input("Email (optional, agar reply chahiye)", key="fb_email")
-    if st.button("📩 Submit Feedback"):
+    st.markdown(f"### {t('feedback_header')}")
+    st.caption(t("feedback_caption"))
+    fb_text = st.text_area(t("feedback_label"), placeholder=t("feedback_placeholder"), key="fb_text")
+    fb_email = st.text_input(t("feedback_email_label"), key="fb_email")
+    if st.button(t("feedback_submit")):
         if fb_text.strip():
             try:
                 send_feedback_email(fb_text, fb_email, GMAIL_ADDRESS, GMAIL_APP_PASSWORD)
-                st.success("✅ Shukriya! Aapka feedback mil gaya.")
+                st.success(t("feedback_success"))
             except Exception as e:
                 print(f"Feedback email error: {e}")
-                st.error("⚠️ Feedback bhejte waqt masla aaya — dobara try karein.")
+                st.error(t("feedback_error"))
         else:
-            st.warning("Pehle apna feedback likhein.")
+            st.warning(t("feedback_empty_warning"))
 
 # Tabs
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "🗺️ Route Planner",
-    "🧠 Traffic AI",
-    "📊 Forecast",
-    "⛽ Petrol Calc",
-    "🚗 Carpool"
+    t("tab_route_planner"),
+    t("tab_traffic_ai"),
+    t("tab_forecast"),
+    t("tab_petrol"),
+    t("tab_carpool"),
 ])
 
 # ─── TAB 1 — Route Planner ───
 with tab1:
-    st.markdown("### 🗺️ Find Your Best Route")
-    st.markdown("*Enter your locations and find the best route!*")
+    st.markdown(f"### {t('route_planner_heading')}")
+    st.markdown(t("route_planner_subheading"))
+
+    known_stops = sorted({s for r in load_bus_routes() for s in r["stops"]})
+    MANUAL_ENTRY_LABEL = t("manual_entry_label")
+    location_options = [MANUAL_ENTRY_LABEL] + known_stops
+
     col1, col2, col3 = st.columns(3)
     with col1:
-        start = st.text_input("📍 Starting Location", placeholder="e.g. Gulshan-e-Iqbal")
+        start_choice = st.selectbox(t("starting_location_label"), location_options, index=None, key="start_choice",
+                                     placeholder=t("select_placeholder"), help=t("location_help"))
+        if start_choice == MANUAL_ENTRY_LABEL:
+            start = st.text_input(t("type_start_manual"), placeholder=t("placeholder_start"), key="start_manual")
+        else:
+            start = start_choice or ""
     with col2:
-        end = st.text_input("🏁 Destination", placeholder="e.g. Saddar")
+        end_choice = st.selectbox(t("destination_label"), location_options, index=None, key="end_choice",
+                                   placeholder=t("select_placeholder"), help=t("location_help"))
+        if end_choice == MANUAL_ENTRY_LABEL:
+            end = st.text_input(t("type_end_manual"), placeholder=t("placeholder_end"), key="end_manual")
+        else:
+            end = end_choice or ""
     with col3:
-        time = st.selectbox("⏰ Departure Time", [
-            "7:00 AM", "8:00 AM", "9:00 AM", "10:00 AM",
-            "12:00 PM", "2:00 PM", "5:00 PM", "7:00 PM"
-        ])
+        departure_time_obj = st.time_input(t("departure_time_label"), value=datetime.time(7, 0))
+        # Build "H:MM AM/PM" without a leading zero on the hour (matches format
+        # the ML model expects) — done manually rather than via strftime's
+        # locale-specific %-I flag, since that isn't reliably supported on Windows.
+        hour_12 = departure_time_obj.hour % 12 or 12
+        period = "AM" if departure_time_obj.hour < 12 else "PM"
+        time = f"{hour_12}:{departure_time_obj.minute:02d} {period}"
     st.markdown("<br>", unsafe_allow_html=True)
-    find = st.button("🔍 Find Best Routes")
+    find = st.button(t("find_routes_button"))
 
     # Persist the search trigger + inputs in session_state so results survive
     # the automatic rerun that st_folium triggers when the map component loads.
@@ -226,7 +307,7 @@ with tab1:
             }
         else:
             st.session_state['route_search'] = None
-            st.error("⚠️ Please enter both Starting Location and Destination!")
+            st.error(t("error_missing_fields"))
 
     search = st.session_state.get('route_search')
 
@@ -248,7 +329,7 @@ with tab1:
         rate_limited = False
         start_coords, end_coords, f = None, None, None
         try:
-            with st.spinner("🔍 Finding best routes..."):
+            with st.spinner(t("finding_routes_spinner")):
                 # Check our own already-geocoded stop database first — avoids a
                 # live ORS call for the very common case where the user typed
                 # a well-known landmark/chorangi that's already one of our stops.
@@ -278,6 +359,12 @@ with tab1:
 
         col1, col2 = st.columns([1, 2])
 
+        traffic_display = {
+            "Light": t("traffic_light"),
+            "Moderate": t("traffic_moderate"),
+            "Heavy": t("traffic_heavy"),
+        }
+
         with col1:
             if f and start_coords and end_coords:
                 cost = estimate_cost("Rickshaw", f['distance'])
@@ -290,59 +377,78 @@ with tab1:
                 traffic_now = predict_traffic(current_day, s_time, matched_area, "Clear")
 
                 badge_style = {
-                    "Light": ("#00bb66", "🟢"),
-                    "Moderate": ("#ff9900", "🟡"),
-                    "Heavy": ("#ff4444", "🔴"),
+                    "Light": ("#2E9B63", "🟢"),
+                    "Moderate": ("#C98826", "🟡"),
+                    "Heavy": ("#C1443D", "🔴"),
                 }
                 badge_color, badge_emoji = badge_style.get(traffic_now, ("#999", "⚪"))
 
                 st.markdown(f"""
                 <div class='route-fastest'>
-                    <h2 style='color:#0066ff; margin:0'>⚡ Fastest</h2>
-                    <p style='color:#999; margin:5px 0 15px 0'>Via Fastest Route</p>
-                    <p class='price' style='color:#0066ff'>{f['duration']} mins</p>
+                    <h2 style='color:var(--teal-700); margin:0; font-size:1.3rem;'>{t("fastest_card_title")}</h2>
+                    <p style='color:var(--ink-soft); margin:5px 0 12px 0; font-size:0.9rem;'>{t("via_fastest_route")}</p>
+                    <p class='price' style='color:var(--ink)'>{f['duration']} {t("mins_suffix")}</p>
                     <p class='stat'>📏 {f['distance']} km</p>
-                    <p class='stat'>🛺 Rickshaw</p>
-                    <p class='stat' style='color:#0066ff; font-weight:700; font-size:1.1rem'>Rs. {cost}</p>
-                    <p class='stat' style='color:{badge_color}; font-weight:700; margin-top:10px;'>{badge_emoji} {traffic_now} traffic expected at {s_time}</p>
-                    <a href='{link_drive}' target='_blank' class='maps-btn-blue'>🗺️ Open in Maps</a>
+                    <p class='stat'>{t("rickshaw_label")}</p>
+                    <p class='stat' style='color:var(--teal-700); font-weight:700; font-size:1.1rem'>Rs. {cost}</p>
+                    <p class='stat' style='color:{badge_color}; font-weight:700; margin-top:10px;'>{badge_emoji} {traffic_display.get(traffic_now, traffic_now)} {t("traffic_expected")} {s_time}</p>
+                    <div class='stub-bottom'>
+                        <a href='{link_drive}' target='_blank' class='maps-btn-blue'>{t("open_in_maps")}</a>
+                    </div>
                 </div>
                 """, unsafe_allow_html=True)
 
-                # Suggest a better nearby departure time if one exists with lower traffic
-                time_order = ["7:00 AM", "8:00 AM", "9:00 AM", "10:00 AM", "12:00 PM", "2:00 PM", "5:00 PM", "7:00 PM"]
+                # Suggest a better departure time (next few hours) if one exists with lower traffic.
+                # Works for ANY custom time now, not just a fixed list of slots.
+                def _parse_12h(time_str):
+                    time_part, period = time_str.split(" ")
+                    h, m = map(int, time_part.split(":"))
+                    if period == "AM" and h == 12:
+                        h = 0
+                    elif period == "PM" and h != 12:
+                        h += 12
+                    return h, m
+
+                def _format_12h(hour24, minute):
+                    h12 = hour24 % 12 or 12
+                    suffix = "AM" if hour24 < 12 else "PM"
+                    return f"{h12}:{minute:02d} {suffix}"
+
                 traffic_rank = {"Light": 1, "Moderate": 2, "Heavy": 3}
-                if s_time in time_order:
-                    idx = time_order.index(s_time)
-                    for candidate_time in time_order[idx + 1: idx + 4]:
-                        candidate_result = predict_traffic(current_day, candidate_time, matched_area, "Clear")
-                        if traffic_rank[candidate_result] < traffic_rank[traffic_now]:
-                            st.info(f"💡 Try **{candidate_time}** instead — traffic is expected to drop to **{candidate_result}**.")
-                            break
+                base_hour, base_minute = _parse_12h(s_time)
+                for offset in (1, 2, 3):
+                    candidate_hour = (base_hour + offset) % 24
+                    candidate_time = _format_12h(candidate_hour, base_minute)
+                    candidate_result = predict_traffic(current_day, candidate_time, matched_area, "Clear")
+                    if traffic_rank[candidate_result] < traffic_rank[traffic_now]:
+                        st.info(t("try_time_suggestion", time=candidate_time, level=traffic_display.get(candidate_result, candidate_result)))
+                        break
             else:
-                st.markdown("""
+                st.markdown(f"""
                 <div class='route-fastest'>
-                    <h2 style='color:#999; margin:0'>⚡ Fastest</h2>
-                    <p style='color:#999; margin:10px 0'>📶 Needs internet connection</p>
+                    <h2 style='color:var(--ink-soft); margin:0; font-size:1.3rem;'>{t("fastest_card_title")}</h2>
+                    <div class='stub-bottom'>
+                        <p style='color:var(--ink-soft); margin:0'>{t("needs_internet")}</p>
+                    </div>
                 </div>
                 """, unsafe_allow_html=True)
 
         with col2:
-            st.markdown("#### 🚌 Bus Route Options")
+            st.markdown(f"#### {t('bus_route_options_heading')}")
 
             if not internet_ok:
                 if rate_limited:
-                    st.warning("⏳ Map/route service ka daily limit abhi khatam ho gaya hai (bohot zyada log use kar rahe hain) — kal wapas try karein ya thodi der baad. Neeche bus route names phir bhi dikh rahe hain.")
+                    st.warning(t("quota_warning"))
                 else:
-                    st.warning("📶 No internet connection detected — showing offline bus route matches only (route number & stops). Connect to internet for walking distance and live map.")
+                    st.warning(t("no_internet_warning"))
 
             if basic_matches:
                 option_labels = [
-                    f"{m['route_id']} · {m['category']}" + (" (nearby stop)" if m.get("match_type") == "proximity" else "")
+                    f"{m['route_id']} · {m['category']}" + (t("nearby_stop_suffix") if m.get("match_type") == "proximity" else "")
                     for m in basic_matches
                 ]
                 chosen_label = st.selectbox(
-                    f"🔍 Found {len(basic_matches)} bus route(s) serving this area — select one to see details:",
+                    t("found_routes_label", n=len(basic_matches)),
                     option_labels,
                     key="chosen_bus_route",
                 )
@@ -351,7 +457,7 @@ with tab1:
                 if internet_ok and start_coords and end_coords:
                     enriched, route_rate_limited = None, False
                     try:
-                        with st.spinner("🚌 Getting walking distance & map for this route..."):
+                        with st.spinner(t("getting_walk_spinner")):
                             enriched = enrich_journey(chosen_match, start_coords, end_coords, API_KEY)
                     except ApiError as e:
                         if is_quota_or_rate_limit_error(e):
@@ -362,41 +468,44 @@ with tab1:
                     if enriched:
                         walk1_min = enriched['walk_to_stop']['duration_min']
                         walk2_min = enriched['walk_to_dest']['duration_min']
-                        walk1_text = "" if walk1_min <= 1 else f" (walk {walk1_min} min)"
-                        walk2_text = "" if walk2_min <= 1 else f", then walk {walk2_min} min"
+                        walk1_text = "" if walk1_min <= 1 else f" ({t('walk_suffix', n=walk1_min)})"
+                        walk2_text = "" if walk2_min <= 1 else t("then_walk_suffix", n=walk2_min)
+                        cat_color = CATEGORY_COLORS.get(enriched['category'], "#12857A")
 
                         st.markdown(f"""
-                        <div class='route-cheapest' style='padding:18px 25px; margin-top:12px;'>
-                            <p style='color:#00bb66; font-weight:700; margin:0 0 6px 0'>Route {enriched['route_id']} ({enriched['category']})</p>
-                            <p class='stat'>🚏 Board at: <b>{enriched['start_stop']}</b>{walk1_text}</p>
-                            <p class='stat'>🛑 Alight at: <b>{enriched['end_stop']}</b>{walk2_text}</p>
-                            <p class='stat' style='color:#00bb66; font-weight:700; font-size:1.05rem'>⏱️ Total est. time: {enriched['total_time_min']} mins</p>
+                        <div class='route-cheapest' style='border-left-color:{cat_color}; margin-top:12px;'>
+                            <span class='route-badge' style='background:{cat_color};'>{enriched['route_id']} · {enriched['category']}</span>
+                            <p class='stat'>{t("board_at")} <b>{enriched['start_stop']}</b>{walk1_text}</p>
+                            <p class='stat'>{t("alight_at")} <b>{enriched['end_stop']}</b>{walk2_text}</p>
+                            <p class='stat' style='color:{cat_color}; font-weight:700; font-size:1.05rem'>{t("total_est_time", n=enriched['total_time_min'])}</p>
                         </div>
                         """, unsafe_allow_html=True)
 
-                        st.markdown("##### 🗺️ Route map")
+                        st.markdown(f"##### {t('route_map_heading')}")
                         route_map = build_route_map(start_coords, end_coords, enriched)
                         st_folium(route_map, width=700, height=400, key="route_map")
                     else:
                         if route_rate_limited:
-                            st.caption("⏳ Server thoda busy hai — thodi der baad try karein. Route info: Board near "
-                                       f"**{chosen_match['start_stop']}**, alight near **{chosen_match['end_stop']}**.")
+                            st.caption(f"{t('server_busy_caption')} **{chosen_match['start_stop']}**, "
+                                       f"{t('alight_near').lower()} **{chosen_match['end_stop']}**.")
                         else:
-                            st.caption(f"📍 Board near **{chosen_match['start_stop']}**, alight near **{chosen_match['end_stop']}** — couldn't fetch live walking distance/map for this stop right now.")
+                            st.caption(f"{t('board_near')} **{chosen_match['start_stop']}**, "
+                                       f"{t('alight_near').lower()} **{chosen_match['end_stop']}** — {t('no_live_data_caption')}")
                 else:
+                    cat_color = CATEGORY_COLORS.get(chosen_match['category'], "#12857A")
                     st.markdown(f"""
-                    <div class='route-cheapest' style='padding:18px 25px; margin-top:12px;'>
-                        <p style='color:#00bb66; font-weight:700; margin:0 0 6px 0'>Route {chosen_match['route_id']} ({chosen_match['category']})</p>
-                        <p class='stat'>🚏 Board near: <b>{chosen_match['start_stop']}</b></p>
-                        <p class='stat'>🛑 Alight near: <b>{chosen_match['end_stop']}</b></p>
+                    <div class='route-cheapest' style='border-left-color:{cat_color}; margin-top:12px;'>
+                        <span class='route-badge' style='background:{cat_color};'>{chosen_match['route_id']} · {chosen_match['category']}</span>
+                        <p class='stat'>{t("board_near")} <b>{chosen_match['start_stop']}</b></p>
+                        <p class='stat'>{t("alight_near")} <b>{chosen_match['end_stop']}</b></p>
                     </div>
                     """, unsafe_allow_html=True)
             else:
-                st.info("🚌 No direct bus route found between these two areas — try nearby major roads or landmarks (e.g. a chorangi or well-known stop name).")
+                st.info(t("no_route_found"))
 
         st.markdown("<br>", unsafe_allow_html=True)
         if internet_ok:
-            st.success("✅ Real routes found — Powered by OpenRouteService!")
+            st.success(t("success_message"))
 
 # ─── TAB 2 — Traffic AI ───
 with tab2:
@@ -423,15 +532,15 @@ with tab2:
     traffic_result = predict_traffic(selected_day, selected_time, selected_area, selected_weather)
 
     if traffic_result == "Heavy":
-        traffic_color = "#ff4444"
+        traffic_color = "#C1443D"
         traffic_emoji = "🔴"
         traffic_msg = "Leave early — heavy traffic ahead!"
     elif traffic_result == "Moderate":
-        traffic_color = "#ff9900"
+        traffic_color = "#C98826"
         traffic_emoji = "🟡"
         traffic_msg = "Expect some delays on the road!"
     else:
-        traffic_color = "#00bb66"
+        traffic_color = "#2E9B63"
         traffic_emoji = "🟢"
         traffic_msg = "Great time to travel — smooth roads!"
 
@@ -480,7 +589,7 @@ with tab3:
             t = f"{i-12}:00 PM"
         result = predict_traffic(forecast_day, t, forecast_area, forecast_weather)
         traffic_levels.append({"Light": 1, "Moderate": 2, "Heavy": 3}[result])
-        colors.append("#00bb66" if result == "Light" else "#ff9900" if result == "Moderate" else "#ff4444")
+        colors.append("#2E9B63" if result == "Light" else "#C98826" if result == "Moderate" else "#C1443D")
 
     fig = go.Figure()
     fig.add_trace(go.Bar(
@@ -528,12 +637,12 @@ with tab4:
 
     st.markdown(f"""
     <div class='petrol-card'>
-        <h3 style='color:#ff4500; margin:0 0 15px 0'>⛽ Fuel Summary</h3>
+        <h3 style='color:#C98826; margin:0 0 15px 0'>⛽ Fuel Summary</h3>
         <p style='font-size:1.1rem; color:#333; margin:8px 0'>📏 Distance: <b>{petrol_distance} km</b></p>
         <p style='font-size:1.1rem; color:#333; margin:8px 0'>🛢️ Fuel Required: <b>{liters_needed} liters</b></p>
         <p style='font-size:1.1rem; color:#333; margin:8px 0'>💰 Per Trip Cost: <b>Rs. {total_cost}</b></p>
         <hr style='border-color:#eee; margin:15px 0'>
-        <p style='font-size:1.4rem; color:#ff4500; font-weight:900; margin:0'>💸 Monthly Cost: Rs. {monthly_cost}</p>
+        <p style='font-size:1.4rem; color:#C98826; font-weight:900; margin:0'>💸 Monthly Cost: Rs. {monthly_cost}</p>
     </div>
     """, unsafe_allow_html=True)
 

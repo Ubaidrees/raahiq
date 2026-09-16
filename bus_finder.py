@@ -26,10 +26,16 @@ def _similarity(a, b):
     return SequenceMatcher(None, a.lower().strip(), b.lower().strip()).ratio()
 
 
+def _tokenize(s):
+    """Split into lowercase whole-word tokens (splitting on spaces AND hyphens)."""
+    import re
+    return set(t for t in re.split(r"[\s\-]+", s.lower().strip()) if t)
+
+
 # Common Karachi place-name words that appear inside MANY unrelated compound
 # names (e.g. "Tower" alone vs "Clock Tower DHA" vs "PIDC Tower" are all
 # different places). If the user's query is just one of these generic words,
-# we require an EXACT stop-name match rather than loose substring matching —
+# we require an EXACT stop-name match rather than loose partial matching —
 # otherwise "tower" would wrongly match any stop containing that word.
 _GENERIC_SINGLE_WORDS = {
     "tower", "chorangi", "chowk", "mor", "road", "bridge", "colony",
@@ -38,14 +44,37 @@ _GENERIC_SINGLE_WORDS = {
 }
 
 
+# Real, distinct Karachi place-name words that are so textually similar to each
+# other that character-level similarity alone cannot tell them apart safely
+# (e.g. "Korangi" vs "Orangi" score 0.92 similarity despite being two large,
+# completely different, well-known parts of the city — mixing them up would
+# send a real commuter to the wrong side of Karachi). These must never
+# fuzzy-cross-match each other; only an identical word counts.
+_CONFUSABLE_WORDS = {"korangi", "orangi", "chorangi"}
+
+
 def _find_best_stop_match(query, stops, threshold=0.55):
-    """Find the stop in `stops` that best matches `query`. Returns (stop_name, index, score)."""
+    """
+    Find the stop in `stops` that best matches `query`. Returns (stop_name, index, score).
+
+    Matching is WORD-based, not raw character-based. This matters a lot for
+    Karachi place names: "Korangi" and "Orangi" are two completely different,
+    well-known areas, but "Chorangi" (an extremely common stop-name suffix
+    meaning "crossing") shares so many raw characters with both that naive
+    character-level similarity/substring checks confidently but wrongly match
+    them (e.g. "korangi" vs "chorangi" scores 0.8 on raw character similarity —
+    higher than some genuinely correct matches!). Comparing whole words instead
+    of raw substrings avoids most of this: "korangi" is simply never the SAME
+    WORD as "chorangi", no matter how many letters they share.
+    """
     query_lower = query.lower().strip()
+    query_words = _tokenize(query)
     is_generic_query = query_lower in _GENERIC_SINGLE_WORDS
     best_stop, best_idx, best_score = None, None, 0.0
 
     for idx, stop in enumerate(stops):
         stop_lower = stop.lower()
+        stop_words = _tokenize(stop)
 
         if query_lower == stop_lower:
             return stop, idx, 1.0
@@ -54,10 +83,34 @@ def _find_best_stop_match(query, stops, threshold=0.55):
             # Too ambiguous for partial matching — skip anything that isn't an exact match
             continue
 
-        if query_lower in stop_lower or stop_lower in query_lower:
-            score = 0.9
+        shared_words = query_words & stop_words
+        ratio = _similarity(query, stop)
+
+        if shared_words:
+            if query_words <= stop_words or stop_words <= query_words:
+                score = max(0.9, ratio)
+            else:
+                # Only ONE of several words matched — don't let a single weak/common
+                # shared word (e.g. "star") carry a match when the rest of the name
+                # is very different. Require the overall string similarity to also
+                # be reasonably high (e.g. "Gulshan-e-Iqbal"/"Gulshan Chorangi" = 0.52
+                # passes; "Star Gate"/"Five Star Chorangi" = 0.44 correctly fails).
+                score = ratio if ratio >= 0.50 else 0.0
         else:
-            score = _similarity(query, stop)
+            query_has_confusable = bool(query_words & _CONFUSABLE_WORDS)
+            stop_has_confusable = bool(stop_words & _CONFUSABLE_WORDS)
+            if query_has_confusable or stop_has_confusable:
+                # No shared word AND one side is a known-confusable term
+                # (Korangi/Orangi/Chorangi) — never trust pure character
+                # similarity here, no matter how high it scores.
+                score = 0.0
+            else:
+                # No shared whole word at all. Only allow a very close character-level
+                # match here (e.g. a genuine single-word spelling variant) — anything
+                # looser risks matching a completely unrelated place that just happens
+                # to share letters.
+                score = ratio if ratio >= 0.90 else 0.0
+
         if score > best_score:
             best_stop, best_idx, best_score = stop, idx, score
 
