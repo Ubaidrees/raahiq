@@ -32,40 +32,18 @@ def _tokenize(s):
     return set(t for t in re.split(r"[\s\-]+", s.lower().strip()) if t)
 
 
-# Common Karachi place-name words that appear inside MANY unrelated compound
-# names (e.g. "Tower" alone vs "Clock Tower DHA" vs "PIDC Tower" are all
-# different places). If the user's query is just one of these generic words,
-# we require an EXACT stop-name match rather than loose partial matching —
-# otherwise "tower" would wrongly match any stop containing that word.
 _GENERIC_SINGLE_WORDS = {
     "tower", "chorangi", "chowk", "mor", "road", "bridge", "colony",
     "market", "town", "stop", "square", "park", "hospital", "school",
     "hotel", "goth", "society", "complex", "station", "gate", "plaza",
 }
 
-
-# Real, distinct Karachi place-name words that are so textually similar to each
-# other that character-level similarity alone cannot tell them apart safely
-# (e.g. "Korangi" vs "Orangi" score 0.92 similarity despite being two large,
-# completely different, well-known parts of the city — mixing them up would
-# send a real commuter to the wrong side of Karachi). These must never
-# fuzzy-cross-match each other; only an identical word counts.
 _CONFUSABLE_WORDS = {"korangi", "orangi", "chorangi"}
 
 
 def _find_best_stop_match(query, stops, threshold=0.55):
     """
     Find the stop in `stops` that best matches `query`. Returns (stop_name, index, score).
-
-    Matching is WORD-based, not raw character-based. This matters a lot for
-    Karachi place names: "Korangi" and "Orangi" are two completely different,
-    well-known areas, but "Chorangi" (an extremely common stop-name suffix
-    meaning "crossing") shares so many raw characters with both that naive
-    character-level similarity/substring checks confidently but wrongly match
-    them (e.g. "korangi" vs "chorangi" scores 0.8 on raw character similarity —
-    higher than some genuinely correct matches!). Comparing whole words instead
-    of raw substrings avoids most of this: "korangi" is simply never the SAME
-    WORD as "chorangi", no matter how many letters they share.
     """
     query_lower = query.lower().strip()
     query_words = _tokenize(query)
@@ -80,35 +58,37 @@ def _find_best_stop_match(query, stops, threshold=0.55):
             return stop, idx, 1.0
 
         if is_generic_query:
-            # Too ambiguous for partial matching — skip anything that isn't an exact match
             continue
 
         shared_words = query_words & stop_words
         ratio = _similarity(query, stop)
+        is_subset_match = query_words and stop_words and (query_words <= stop_words or stop_words <= query_words)
 
-        if shared_words:
-            if query_words <= stop_words or stop_words <= query_words:
-                score = max(0.9, ratio)
-            else:
-                # Only ONE of several words matched — don't let a single weak/common
-                # shared word (e.g. "star") carry a match when the rest of the name
-                # is very different. Require the overall string similarity to also
-                # be reasonably high (e.g. "Gulshan-e-Iqbal"/"Gulshan Chorangi" = 0.52
-                # passes; "Star Gate"/"Five Star Chorangi" = 0.44 correctly fails).
-                score = ratio if ratio >= 0.50 else 0.0
+        if is_subset_match:
+            # One side's words are fully contained in the other's (e.g. "Jama"
+            # inside "Jama Cloth", "Gulshan" inside "Gulshan Chorangi") —
+            # strong, safe evidence of relatedness.
+            score = max(0.9, ratio)
+        elif shared_words:
+            # Share ONE word, but each side also has a different word that
+            # doesn't overlap at all — that differing word is often exactly
+            # what makes two real places different (e.g. "Malir Halt" vs
+            # "Malir Cantt" — same broad area, genuinely different specific
+            # places, 0.76 similarity). Require a high overall similarity,
+            # high enough to admit genuine spelling variants (e.g. "Ayesha
+            # Manzil"/"Aisha Manzil" = 0.88) while rejecting same-area
+            # confusions like the Malir case above. A broad-area name that
+            # only loosely matches a specific landmark (e.g. "Gulshan-e-Iqbal"
+            # vs "Gulshan Chorangi") is instead caught by proximity matching
+            # (real GPS distance) when online — a safer signal than guessing
+            # from partial word overlap.
+            score = ratio if ratio >= 0.80 else 0.0
         else:
             query_has_confusable = bool(query_words & _CONFUSABLE_WORDS)
             stop_has_confusable = bool(stop_words & _CONFUSABLE_WORDS)
             if query_has_confusable or stop_has_confusable:
-                # No shared word AND one side is a known-confusable term
-                # (Korangi/Orangi/Chorangi) — never trust pure character
-                # similarity here, no matter how high it scores.
                 score = 0.0
             else:
-                # No shared whole word at all. Only allow a very close character-level
-                # match here (e.g. a genuine single-word spelling variant) — anything
-                # looser risks matching a completely unrelated place that just happens
-                # to share letters.
                 score = ratio if ratio >= 0.90 else 0.0
 
         if score > best_score:
@@ -120,17 +100,6 @@ def _find_best_stop_match(query, stops, threshold=0.55):
 
 
 def find_local_coords(query, stop_coords_path="stop_coordinates.json"):
-    """
-    Before hitting the live ORS geocoding API, check if the query matches one
-    of our own already-geocoded bus stop names (stop_coordinates.json, built
-    once via build_stop_coordinates.py). Real Karachi commuters very often
-    type a well-known chorangi/landmark name that's already in our 677-stop
-    database — reusing that coordinate avoids a live API call entirely and
-    is usually just as accurate as fresh geocoding.
-
-    Returns [lon, lat] if a confident match is found, else None (caller
-    should fall back to live geocoding).
-    """
     stop_coords = load_stop_coordinates(stop_coords_path)
     if not stop_coords:
         return None
@@ -143,12 +112,6 @@ def find_local_coords(query, stop_coords_path="stop_coordinates.json"):
 
 
 def find_matching_routes(start_location, end_location, routes_path="bus_routes.json", top_n=15):
-    """
-    Cheap first pass: find candidate routes where both locations fuzzy-match a stop.
-    Returns list sorted by confidence, direction correctness, and directness.
-    top_n=15 by default so users can see (almost) every bus that plausibly serves
-    their route and pick whichever they prefer, rather than us picking for them.
-    """
     routes = load_bus_routes(routes_path)
     results = []
 
@@ -177,23 +140,10 @@ def find_matching_routes(start_location, end_location, routes_path="bus_routes.j
     return results[:top_n]
 
 
-# ─────────────────────────── Proximity-based matching ───────────────────────────
-# Route guides only list "major" stops, so a real stop the user knows about
-# (e.g. "Star Gate") sometimes isn't literally in our text data even though a
-# nearby, practically-interchangeable stop is ("Colony Gate", 300m away). This
-# section catches those cases using precomputed real-world stop coordinates
-# instead of relying purely on name matching.
-
 _STOP_COORDS_CACHE = None
 
 
 def load_stop_coordinates(path="stop_coordinates.json"):
-    """
-    Load precomputed {stop_name: [lon, lat]} coordinates, built once via
-    build_stop_coordinates.py. Returns an empty dict (proximity matching
-    silently disabled) if the file doesn't exist yet, so the app keeps
-    working with name-only matching until that file is generated.
-    """
     global _STOP_COORDS_CACHE
     if _STOP_COORDS_CACHE is None:
         try:
@@ -205,7 +155,6 @@ def load_stop_coordinates(path="stop_coordinates.json"):
 
 
 def _haversine_km(coord1, coord2):
-    """Great-circle distance in km between two [lon, lat] points."""
     from math import radians, sin, cos, sqrt, atan2
     lon1, lat1 = coord1
     lon2, lat2 = coord2
@@ -218,12 +167,6 @@ def _haversine_km(coord1, coord2):
 
 def find_proximity_routes(start_coords, end_coords, routes_path="bus_routes.json",
                            stop_coords_path="stop_coordinates.json", threshold_km=0.5, top_n=15):
-    """
-    Find routes that have a stop within `threshold_km` of the user's actual
-    start/end coordinates, even if that stop's name doesn't textually match
-    what the user typed. Requires stop_coordinates.json to exist (built via
-    build_stop_coordinates.py) — returns an empty list otherwise.
-    """
     stop_coords = load_stop_coordinates(stop_coords_path)
     if not stop_coords:
         return []
@@ -233,7 +176,7 @@ def find_proximity_routes(start_coords, end_coords, routes_path="bus_routes.json
 
     for route in routes:
         stops = route["stops"]
-        best_start = None  # (idx, stop_name, distance_km)
+        best_start = None
         best_end = None
 
         for idx, stop in enumerate(stops):
@@ -260,7 +203,7 @@ def find_proximity_routes(start_coords, end_coords, routes_path="bus_routes.json
             "end_stop": end_stop,
             "direction_ok": start_idx < end_idx,
             "stops_between": abs(end_idx - start_idx),
-            "confidence": round(1.0 - (start_dist + end_dist) / (2 * threshold_km) * 0.3, 2),  # 0.7-1.0 range
+            "confidence": round(1.0 - (start_dist + end_dist) / (2 * threshold_km) * 0.3, 2),
             "start_score": None,
             "end_score": None,
             "match_type": "proximity",
@@ -274,13 +217,6 @@ def find_proximity_routes(start_coords, end_coords, routes_path="bus_routes.json
 
 def find_all_matching_routes(start_location, end_location, start_coords=None, end_coords=None,
                               routes_path="bus_routes.json", top_n=15):
-    """
-    Combines name-based matching (always available, offline-capable) with
-    proximity-based matching (only when start_coords/end_coords are known,
-    i.e. internet is available) into a single deduplicated, ranked list.
-    A route already found by name isn't duplicated even if it also matches
-    by proximity — the name-based match is kept since it's more specific.
-    """
     name_matches = find_matching_routes(start_location, end_location, routes_path, top_n=top_n)
     combined = list(name_matches)
 
@@ -297,24 +233,6 @@ def find_all_matching_routes(start_location, end_location, start_coords=None, en
 
 
 def enrich_journey(match, start_coords, end_coords, api_key):
-    """
-    Given ONE basic route match (from find_matching_routes/find_all_matching_routes),
-    compute the real walking + bus legs for it. Only call this for the route
-    the user actually selects, to avoid burning API calls on every candidate.
-
-    Three cases for each end of the trip:
-    1. Proximity match (match_type == "proximity"): we already know the exact
-       coordinates of the nearby stop from stop_coordinates.json — just
-       compute the real walking distance from the user's point to it.
-    2. Near-identical name match (start_score/end_score very high, e.g. user
-       typed "ayesha manzil" and the stop is "Aisha Manzil"): treat as the
-       same location and skip walking entirely, to avoid geocoding-noise
-       producing a bogus "extra walk" for what is really the same place.
-    3. Otherwise: geocode the stop by name and compute a real walking leg.
-
-    Returns an enriched journey dict, or None if any leg couldn't be computed
-    (e.g. no internet, or a stop couldn't be geocoded).
-    """
     NAME_MATCH_THRESHOLD = 0.85
     ZERO_LEG = {"distance_km": 0.0, "duration_min": 0}
     known_stop_coords = load_stop_coordinates()
@@ -326,8 +244,6 @@ def enrich_journey(match, start_coords, end_coords, api_key):
         stop_start_coords = start_coords
         walk1 = ZERO_LEG
     elif known_stop_coords.get(match["start_stop"]):
-        # Every stop in bus_routes.json was geocoded once via build_stop_coordinates.py —
-        # reuse that instead of geocoding it again live.
         stop_start_coords = known_stop_coords[match["start_stop"]]
         walk1 = get_walking_leg(tuple(start_coords), tuple(stop_start_coords), api_key)
     else:
@@ -366,11 +282,6 @@ def enrich_journey(match, start_coords, end_coords, api_key):
 
 
 def build_ranked_journeys(start_location, end_location, start_coords, end_coords, api_key, candidates_to_check=2):
-    """
-    Kept for backward compatibility: fuzzy-matches candidates then enriches the
-    top few and ranks by total time. Prefer find_matching_routes() + enrich_journey()
-    for the "let the user pick" flow.
-    """
     candidates = find_matching_routes(start_location, end_location, top_n=candidates_to_check)
     journeys = []
     for c in candidates:
@@ -380,8 +291,6 @@ def build_ranked_journeys(start_location, end_location, start_coords, end_coords
     journeys.sort(key=lambda j: j["total_time_min"])
     return journeys
 
-
-# ─────────────────────────── Geocoding & real travel legs ───────────────────────────
 
 KARACHI_BOUNDS = {"min_lon": 66.60, "max_lon": 67.50, "min_lat": 24.70, "max_lat": 25.20}
 KARACHI_FOCUS = [67.0011, 24.8607]
@@ -395,7 +304,6 @@ def _within_karachi(coords):
 
 @st.cache_data
 def geocode_stop(stop_name, api_key):
-    """Geocode a bus stop name to [lon, lat] using ORS, constrained to Karachi's bounding box."""
     try:
         client = openrouteservice.Client(key=api_key)
         result = client.pelias_search(
@@ -424,7 +332,6 @@ def geocode_stop(stop_name, api_key):
 
 @st.cache_data
 def get_walking_leg(from_coords, to_coords, api_key):
-    """Real walking distance/time between two [lon, lat] points using ORS foot-walking profile."""
     try:
         client = openrouteservice.Client(key=api_key)
         r = client.directions([from_coords, to_coords], profile='foot-walking', format='geojson')
@@ -442,10 +349,6 @@ def get_walking_leg(from_coords, to_coords, api_key):
 
 @st.cache_data
 def get_bus_segment_estimate(from_coords, to_coords, api_key):
-    """
-    Estimate the in-bus travel leg using ORS driving-car distance/duration as a base,
-    then apply a slowdown factor for stop-and-go bus behaviour.
-    """
     try:
         client = openrouteservice.Client(key=api_key)
         r = client.directions([from_coords, to_coords], profile='driving-car', format='geojson')
@@ -463,15 +366,7 @@ def get_bus_segment_estimate(from_coords, to_coords, api_key):
         return None
 
 
-
-# ─────────────────────────── Map rendering ───────────────────────────
-
 def build_route_map(user_start_coords, user_end_coords, journey):
-    """
-    Build a folium map showing: user start -> walk -> board stop -> bus leg
-    -> alight stop -> walk -> destination.
-    All coords are [lon, lat] (ORS order); folium needs [lat, lon].
-    """
     def flip(c):
         return [c[1], c[0]]
 
