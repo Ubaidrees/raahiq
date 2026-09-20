@@ -36,21 +36,18 @@ save time, reduce fuel costs and avoid heavy traffic.
 ## Setup
 
 Install dependencies:
-```
 pip install -r requirements.txt
-```
+
 
 Add your OpenRouteService API key to a `.env` file:
-```
 ORS_API_KEY=your_api_key_here
-```
+
 
 Get a free API key at: https://openrouteservice.org
 
 Run the app:
-```
 streamlit run app.py
-```
+
 (On Windows, if the `streamlit` command isn't recognized, use `python -m streamlit run app.py` instead.)
 
 ## ML Model
@@ -59,13 +56,24 @@ The traffic prediction model is trained on a synthetic dataset of 5,000 Karachi 
 It uses day, time, area, and weather as features to predict Light, Moderate, or Heavy traffic.
 
 To retrain the model:
-```
 python traffic_model.py
-```
+
 
 ## Bus Route Data
 
 Bus route data was manually compiled from real Karachi public transport route guides, covering Mini Bus, Coach, Other Bus, Red Bus, EV Bus, and BRT (Green/Orange Line) routes — 70+ routes in total, stored in `bus_routes.json`. The matching engine fuzzy-matches user-entered locations against stop names, so exact spelling isn't required (e.g. "Gulshan-e-Iqbal" correctly matches nearby stops like "Gulshan Chorangi").
+
+## Dataset Overview & Citation
+
+- **Total Routes:** Multiple categories including Mini Buses, Coaches, Red Buses, EV Buses, and BRT (Green & Orange Line).
+- **Total Unique Stops:** ~1,750+ geocoded stops across Karachi.
+- **Files Included:** 
+  - `bus_routes.json`: Contains route IDs, categories, and ordered stop sequences.
+  - `stop_coordinates.json`: Pre-geocoded GPS coordinates for all unique stops.
+
+### Usage & Citation
+If you use this dataset in your research or application, please cite it as:
+> Muhammad Ubaid Idrees (2026). Karachi Public Transit Dataset (RaahIQ).
 
 ## Known Limitations
 
@@ -75,5 +83,5 @@ Bus route data was manually compiled from real Karachi public transport route gu
 
 ## Built by
 
-Muhammad Ubaid Idrees — BS AI Student
+Muhammad Ubaid Idrees — BS AI Student  
 Dawood University of Engineering & Technology, Karachi
