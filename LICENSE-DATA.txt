@@ -1,0 +1,1 @@
+This dataset (bus_routes.json, stop_coordinates.json) is licensed under CC BY 4.0. Full license text: https://creativecommons.org/licenses/by/4.0/
