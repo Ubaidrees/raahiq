@@ -7,7 +7,7 @@ save time, reduce fuel costs and avoid heavy traffic.
 ## Features
 
 - 🗺️ **Route Planner** — Find the fastest driving route using real map data, with a live traffic badge for your chosen departure time and a smarter-time suggestion when heavy traffic is expected.
-- 🚌 **Bus Route Finder** — Matches your start and destination against real Karachi bus, coach, Red Bus, EV Bus, and BRT route data (70+ routes). Shows every bus that plausibly serves your route so you can pick the one you prefer, along with walking distance to the nearest stop and an interactive map — works even without internet, falling back to offline route-name matching.
+- 🚌 **Bus Route Finder** — Matches your start and destination against real Karachi bus, coach, Red Bus, EV Bus, and BRT route data (70 routes). Shows every bus that plausibly serves your route so you can pick the one you prefer, along with walking distance to the nearest stop and an interactive map — works even without internet, falling back to offline route-name matching.
 - 🧠 **Traffic AI** — ML-powered traffic prediction for any area, time and weather.
 - 📊 **Full Day Forecast** — Visual traffic forecast chart for the entire day.
 - ⛽ **Petrol Calculator** — Calculate exact fuel cost for bike riders.
@@ -61,12 +61,12 @@ python traffic_model.py
 
 ## Bus Route Data
 
-Bus route data was manually compiled from real Karachi public transport route guides, covering Mini Bus, Coach, Other Bus, Red Bus, EV Bus, and BRT (Green/Orange Line) routes — 70+ routes in total, stored in `bus_routes.json`. The matching engine fuzzy-matches user-entered locations against stop names, so exact spelling isn't required (e.g. "Gulshan-e-Iqbal" correctly matches nearby stops like "Gulshan Chorangi").
+Bus route data was manually compiled from real Karachi public transport route guides, covering Mini Bus, Coach, Other Bus, Red Bus, EV Bus, and BRT (Green/Orange Line) routes — 70 routes in total, stored in `bus_routes.json`. The matching engine fuzzy-matches user-entered locations against stop names, so exact spelling isn't required (e.g. "Gulshan-e-Iqbal" correctly matches nearby stops like "Gulshan Chorangi").
 
 ## Dataset Overview & Citation
 
 - **Total Routes:** Multiple categories including Mini Buses, Coaches, Red Buses, EV Buses, and BRT (Green & Orange Line).
-- **Total Unique Stops:** ~1,750+ geocoded stops across Karachi.
+- **Total Unique Stops:** ~677 unique stops with GPS coordinates across Karachi
 - **Files Included:** 
   - `bus_routes.json`: Contains route IDs, categories, and ordered stop sequences.
   - `stop_coordinates.json`: Pre-geocoded GPS coordinates for all unique stops.
