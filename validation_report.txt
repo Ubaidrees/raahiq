@@ -1,0 +1,246 @@
+RaahIQ dataset validation report
+========================================
+Routes                         : 70
+Unique stop names              : 677
+Stops with coordinates         : 676
+Coverage                       : 99.9%
+
+[1] Missing coordinates: 1
+    - Orangi Zahoor Chowk 11½
+
+[2] Duplicate-coordinate groups: 72
+    [67.262933, 24.824024] shared by 4 stops:
+        - Bhains Colony
+        - Bhains Colony Mor
+        - Bhens Colony
+        - Bhens Colony Mor
+    [67.072588, 24.900894] shared by 4 stops:
+        - Chamra Chorangi
+        - Habib Chorangi
+        - Hospital Chorangi
+        - Mausamiyat Chorangi
+    [67.013942, 24.873224] shared by 4 stops:
+        - Masan Road
+        - Plaza
+        - Reejant Plaza
+        - Rejant Plaza
+    [67.050321, 24.887558] shared by 3 stops:
+        - Aladeen
+        - Marora Goth
+        - Mosmiat
+    [66.998043, 24.932962] shared by 3 stops:
+        - Badar Chowk
+        - Badar Chowk 4
+        - Badar Chowk 5
+    [66.963669, 24.919428] shared by 3 stops:
+        - Chungi Stop
+        - Saeedabad 8
+        - W9 Stop
+    [66.982454, 24.888996] shared by 3 stops:
+        - Dakhana
+        - Keemari
+        - Raiksar
+    [67.064939, 24.911099] shared by 3 stops:
+        - K Area
+        - Mwach Goth
+        - Rohri Goth
+    [67.018519, 24.865553] shared by 3 stops:
+        - Khaibar Chowk
+        - Pareshan Chowk
+        - Tori Chowk
+    [67.082938, 24.892804] shared by 3 stops:
+        - National Cricket Stadium
+        - National Stadium
+        - Pakhtunabad
+    [67.08974, 24.950544] shared by 3 stops:
+        - Saforah Goth
+        - Sohrab Goth
+        - Sohrab Goth Chorangi
+    [67.203325, 24.901004] shared by 3 stops:
+        - Saoodabad
+        - Saudabad
+        - Saudabad Chorangi
+    [66.972171, 24.918802] shared by 2 stops:
+        - 19-D
+        - 19/D
+    [67.03684, 24.807951] shared by 2 stops:
+        - 26th Street
+        - DHA 26th Street
+    [67.043688, 24.891659] shared by 2 stops:
+        - 3 Hatti
+        - Teen Hatti
+    [67.064436, 25.00646] shared by 2 stops:
+        - 4K Chorangi
+        - Surjani Chorangi (4K) Station
+    [67.033409, 24.902885] shared by 2 stops:
+        - 5 Number
+        - Nazimabad 2
+    [67.063975, 24.949701] shared by 2 stops:
+        - 5 Star Chorangi
+        - KDA Chorangi
+    [67.025398, 24.928696] shared by 2 stops:
+        - Abdullah College
+        - Abdullah College Station
+    [66.978405, 24.87143] shared by 2 stops:
+        - Agra Taj
+        - Agra Taj Colony
+    [67.073815, 24.837382] shared by 2 stops:
+        - Akhtar Colony
+        - Khudad Colony
+    [67.056953, 24.897406] shared by 2 stops:
+        - BMDF Colony
+        - PIB Colony
+    [66.961395, 24.918779] shared by 2 stops:
+        - Baldia
+        - Baldia Bridge
+    [67.017673, 24.852856] shared by 2 stops:
+        - Bhitayabad
+        - PICD
+    [67.045509, 24.912833] shared by 2 stops:
+        - Board Office
+        - Board Office Station
+    [67.017752, 24.856318] shared by 2 stops:
+        - Burns Road
+        - Sindh Secretariat
+    [67.226231, 24.951936] shared by 2 stops:
+        - CMH Malir Cantt
+        - Malir Cantt
+    [67.103173, 24.82032] shared by 2 stops:
+        - Crossing
+        - Korangi Crossing
+    [67.040248, 24.935967] shared by 2 stops:
+        - Dolmen Mall
+        - Hyderi
+    [66.975183, 24.926199] shared by 2 stops:
+        - Faqeer Colony
+        - Faqeer Colony 10
+    [67.066497, 24.90621] shared by 2 stops:
+        - Fine House
+        - Habitt/Fine House
+    [67.046259, 24.942059] shared by 2 stops:
+        - Five Star Chorangi
+        - Five Star Chorangi Station
+    [66.978722, 24.886353] shared by 2 stops:
+        - Frontier
+        - Frontier Mor
+    [66.988537, 24.892703] shared by 2 stops:
+        - Ghani Chorangi
+        - Indus Chorangi
+    [67.034484, 24.914786] shared by 2 stops:
+        - Golimar
+        - Golimar Chorangi
+    [66.975718, 24.935203] shared by 2 stops:
+        - Gulshan Ghazi
+        - Gulshan-e-Ghazi
+    [67.360052, 24.869999] shared by 2 stops:
+        - Gulshan Hadeed
+        - Gulshan-e-Hadeed
+    [67.008317, 24.854303] shared by 2 stops:
+        - Guromandar
+        - Guru Mandar
+    [66.994231, 24.852792] shared by 2 stops:
+        - Haidri
+        - Ibrahim Haidri
+    [67.021409, 24.856602] shared by 2 stops:
+        - High Court
+        - Sindh High Court
+    [67.074882, 24.934531] shared by 2 stops:
+        - Jamat Khana
+        - Khoja Jamat Khana
+    [66.968229, 24.924372] shared by 2 stops:
+        - Jamia Mehmoodia Orangi
+        - Rahmania Mor
+    [67.02331, 24.876725] shared by 2 stops:
+        - Jutt Lane
+        - Manghopir
+    [67.089061, 24.886993] shared by 2 stops:
+        - Karsaz
+        - Karsaz Mor
+    [67.141641, 24.829052] shared by 2 stops:
+        - Korangi 2½
+        - Korangi 5
+    [67.106373, 24.824071] shared by 2 stops:
+        - Korangi 4
+        - Korangi 6
+    [67.086305, 24.932282] shared by 2 stops:
+        - Lucky One
+        - Fazal Mil/Lucky One
+    [67.019029, 24.86117] shared by 2 stops:
+        - MA Jinnah Road
+        - Sherin Jinnah Colony
+    [67.062401, 24.95887] shared by 2 stops:
+        - Maleer 15
+        - Sher Pao
+    [67.177646, 24.878281] shared by 2 stops:
+        - Maleer Halt
+        - Malir Halt
+    [67.036037, 24.871737] shared by 2 stops:
+        - Mensehra Colony
+        - Musharaf Colony
+    [67.091255, 24.872896] shared by 2 stops:
+        - Meranaka
+        - Miran Nakka
+    [67.000009, 24.90231] shared by 2 stops:
+        - Merroville
+        - Siemens Chorangi
+    [67.181932, 24.903359] shared by 2 stops:
+        - Model Colony Mor
+        - Model Mor
+    [66.96389, 24.907509] shared by 2 stops:
+        - Muhajir Camp
+        - Muhajir Camp 7
+    [67.312516, 25.023082] shared by 2 stops:
+        - Murghi Khana
+        - Murgi Khana
+    [67.019229, 24.939086] shared by 2 stops:
+        - Mwach Mor
+        - Qasba Mor
+    [67.096653, 24.917907] shared by 2 stops:
+        - NIPA Chorangi
+        - Shan Chorangi
+    [67.066642, 24.965857] shared by 2 stops:
+        - Nagan Chorangi
+        - Nagan Chorangi Station
+    [66.972765, 24.914946] shared by 2 stops:
+        - Natta Khan
+        - Shah Faisal Colony
+    [67.091976, 24.912516] shared by 2 stops:
+        - Nayi Abadi 9
+        - University
+    [67.033516, 24.90108] shared by 2 stops:
+        - Nazimabad Petrol Pump
+        - Parco
+    [67.058233, 24.915141] shared by 2 stops:
+        - No.3
+        - No.5
+    [67.036426, 24.873063] shared by 2 stops:
+        - Numaish Chorangi
+        - Numaish
+    [67.034513, 24.885394] shared by 2 stops:
+        - Patel Para
+        - Patel Para (Guru Mandir) Station
+    [67.300176, 24.866274] shared by 2 stops:
+        - Port Bin Qasim Mor
+        - Port Qasim Mor
+    [67.040142, 24.831885] shared by 2 stops:
+        - Punjab Chorangi
+        - Punjab Colony
+    [67.164524, 24.934019] shared by 2 stops:
+        - Race Course
+        - Race Course Road
+    [66.995781, 24.817357] shared by 2 stops:
+        - Sherin Jinnah
+        - Shireen Jinnah Colony
+    [67.033569, 24.833578] shared by 2 stops:
+        - Teen Hati
+        - Teen Talwar
+    [66.943061, 24.875233] shared by 2 stops:
+        - Truck Adda Maripur
+        - Truck Adda Mauripur Graks
+    [67.066738, 24.973482] shared by 2 stops:
+        - UP Mor
+        - UP Mor Station
+
+[3] Coordinates outside Karachi bbox: 0
+
+Note: choti variant-groups (2-3) theek hain; bare groups (>=4) ya missing stops review karo.
