@@ -1,1 +1,71 @@
 route_id,agency_id,route_short_name,route_long_name,route_desc,route_type,route_color,route_text_color
+A_3,KHI_MIXED,A-3,New Sabzi Mandi - Dockyard,Mini Bus,3,12857A,FFFFFF
+A_25,KHI_MIXED,A-25,Abdullah Gabol Goth - Yousaf Goth,Mini Bus,3,12857A,FFFFFF
+C_1,KHI_MIXED,C-1,Sadar - Abdullah Goth,Mini Bus,3,12857A,FFFFFF
+D_1,KHI_MIXED,D-1,Gulshan Hadeed - Baldia,Mini Bus,3,12857A,FFFFFF
+D_7,KHI_MIXED,D-7,Landhi Majeed Colony 2 - New Sabzi Mandi,Mini Bus,3,12857A,FFFFFF
+D_11,KHI_MIXED,D-11,Qayoomabad - Itihad Town,Mini Bus,3,12857A,FFFFFF
+F_11,KHI_MIXED,F-11,Bhens Colony - Chungi Stop,Mini Bus,3,12857A,FFFFFF
+G_3,KHI_MIXED,G-3,Sachal Goth - Muhajir Camp 8½,Mini Bus,3,12857A,FFFFFF
+G_7,KHI_MIXED,G-7,Gulshan Ghazi - Madras Chowk,Mini Bus,3,12857A,FFFFFF
+G_11,KHI_MIXED,G-11,Yousaf Goth - Kiran Hospital,Mini Bus,3,12857A,FFFFFF
+G_17,KHI_MIXED,G-17,Mwach Goth - Gul City,Mini Bus,3,12857A,FFFFFF
+G_19,KHI_MIXED,G-19,Chungi Stop - Madras Chowk,Mini Bus,3,12857A,FFFFFF
+G_27,KHI_MIXED,G-27,Safoora Chorangi - Hub River Road,Mini Bus,3,12857A,FFFFFF
+H,KHI_MIXED,H,Lee Market - Ibrahim Haidri,Mini Bus,3,12857A,FFFFFF
+N_4,KHI_MIXED,N-4,Islam Nagar Orangi - Mehran Town,Mini Bus,3,12857A,FFFFFF
+N_5,KHI_MIXED,N-5,Naval Colony - Bilal Colony,Mini Bus,3,12857A,FFFFFF
+SL,KHI_MIXED,SL,Saddar - Landhi 89,Mini Bus,3,12857A,FFFFFF
+W_11,KHI_MIXED,W-11,Ahsanabad - Keamari,Mini Bus,3,12857A,FFFFFF
+W_18,KHI_MIXED,W-18,Baba Mor - Rehri Goth,Mini Bus,3,12857A,FFFFFF
+W_22,KHI_MIXED,W-22,Chungi Stop - Double Road Korangi 2½,Mini Bus,3,12857A,FFFFFF
+W_25,KHI_MIXED,W-25,Khameso Goth - Itihad Town,Mini Bus,3,12857A,FFFFFF
+W_55,KHI_MIXED,W-55,Khaibarabad - New Lyari,Mini Bus,3,12857A,FFFFFF
+X_8,KHI_MIXED,X-8,Itihad Town - Rohri Goth,Mini Bus,3,12857A,FFFFFF
+X_10,KHI_MIXED,X-10,Itihad Town - Misri Shah,Mini Bus,3,12857A,FFFFFF
+X_23,KHI_MIXED,X-23,Fareed Colony - Hashim Goth,Mini Bus,3,12857A,FFFFFF
+Z_2,KHI_MIXED,Z-2,Gulshan Ghazi - Khayaban-e-Shaheed,Mini Bus,3,12857A,FFFFFF
+Z_18,KHI_MIXED,Z-18,Fareed Colony - Itihad Town,Mini Bus,3,12857A,FFFFFF
+16,KHI_MIXED,16,Sadar - Bhens Colony 9,Mini Bus,3,12857A,FFFFFF
+Marwat,KHI_MIXED,Marwat,Hawksbay Beach - Shireen Jinnah Colony,Coach,3,6B4FA0,FFFFFF
+Bilal,KHI_MIXED,Bilal,Itihad Town - BMDF Colony,Coach,3,6B4FA0,FFFFFF
+Gulistan,KHI_MIXED,Gulistan,Bhitayabad - Sultan Masjid,Coach,3,6B4FA0,FFFFFF
+Ilyas,KHI_MIXED,Ilyas,Landhi 1 - Itihad Town,Coach,3,6B4FA0,FFFFFF
+Masood,KHI_MIXED,Masood,Bhains Colony - Khuda Ki Basti,Coach,3,6B4FA0,FFFFFF
+Khan,KHI_MIXED,Khan,Abdullah Chowk - Abdullah Shah Ghazi,Coach,3,6B4FA0,FFFFFF
+Mashriq,KHI_MIXED,Mashriq,Muzafarabad Colony - Itihad Town,Coach,3,6B4FA0,FFFFFF
+Muslim,KHI_MIXED,Muslim,Steel Town - Shereen Jinnah Colony,Coach,3,6B4FA0,FFFFFF
+New_Afridi,KHI_MIXED,New Afridi,Bhains Colony - Gulshan-e-Ghazi,Coach,3,6B4FA0,FFFFFF
+Super_Hasanzai,KHI_MIXED,Super Hasanzai,New Sabzi Mandi - Shereen Jinnah Colony,Coach,3,6B4FA0,FFFFFF
+7_Star,KHI_MIXED,7 Star,No.5 - Khokhrapar,Coach,3,6B4FA0,FFFFFF
+Sheraz,KHI_MIXED,Sheraz,Malir Cantt - Musharaf Colony,Coach,3,6B4FA0,FFFFFF
+MashAllah,KHI_MIXED,MashAllah,Hijrat Colony - Khairabad,Coach,3,6B4FA0,FFFFFF
+Abdullah,KHI_MIXED,Abdullah,Itihad Town - Qazafi Town,Coach,3,6B4FA0,FFFFFF
+AL_Qadri,KHI_MIXED,AL-Qadri,Khokhrapar - Hawksbay,Coach,3,6B4FA0,FFFFFF
+Rind,KHI_MIXED,Rind,Lee Market - Hub Chowki,Coach,3,6B4FA0,FFFFFF
+9_C,KHI_MIXED,9-C,Malir Cantt - Ziauddin Hospital,Other Bus,3,D4901F,FFFFFF
+4_L,KHI_MIXED,4-L,Maymar Complex - Bolton Market,Other Bus,3,D4901F,FFFFFF
+4_Q,KHI_MIXED,4-Q,Gulzaar-e-Hijri - Bolton Market,Other Bus,3,D4901F,FFFFFF
+7_C,KHI_MIXED,7-C,Bufferzone Gulzar-e-Madina Masjid - Dockyard,Other Bus,3,D4901F,FFFFFF
+11_C,KHI_MIXED,11-C,Azam Basti - Saadi Town,Other Bus,3,D4901F,FFFFFF
+20,KHI_MIXED,20,Baldia Town Sector 9-E - Shereen Jinnah Colony,Other Bus,3,D4901F,FFFFFF
+51_Thatta,KHI_MIXED,51 (Thatta),Thatta City - Lee Market,Other Bus,3,D4901F,FFFFFF
+55,KHI_MIXED,55,Memon Goth - Lee Market,Other Bus,3,D4901F,FFFFFF
+R_1,KHI_MIXED,R-1,Khokhrapar - Dockyard,Red Bus,3,C1443D,FFFFFF
+R_2,KHI_MIXED,R-2,Power House - Indus Hospital,Red Bus,3,C1443D,FFFFFF
+R_3,KHI_MIXED,R-3,Power House - Nasir Jump,Red Bus,3,C1443D,FFFFFF
+R_4,KHI_MIXED,R-4,Power House - Keemari,Red Bus,3,C1443D,FFFFFF
+R_8,KHI_MIXED,R-8,Yousaf Goth - Tower,Red Bus,3,C1443D,FFFFFF
+R_9,KHI_MIXED,R-9,Gulshan-e-Hadeed - Tower,Red Bus,3,C1443D,FFFFFF
+R_10,KHI_MIXED,R-10,Numaish Chorangi - Ibrahim Hyderi,Red Bus,3,C1443D,FFFFFF
+R_11,KHI_MIXED,R-11,Miran Nakka - Shereen Jinnah Colony,Red Bus,3,C1443D,FFFFFF
+R_12,KHI_MIXED,R-12,Naddi Kinara - Lucky Star Saddar,Red Bus,3,C1443D,FFFFFF
+R_13,KHI_MIXED,R-13,Hawksbay - Tower,Red Bus,3,C1443D,FFFFFF
+R_14,KHI_MIXED,R-14,Maymar Extension - Tower,Red Bus,3,C1443D,FFFFFF
+EV_1,KHI_MIXED,EV-1,CMH Malir Cantt - Dolmen Mall Clifton,EV Bus,3,2E9B63,FFFFFF
+EV_2,KHI_MIXED,EV-2,Bahria Town - Malir Halt,EV Bus,3,2E9B63,FFFFFF
+EV_3,KHI_MIXED,EV-3,Malir Cantt Check Post 5 - Numaish,EV Bus,3,2E9B63,FFFFFF
+EV_4,KHI_MIXED,EV-4,Bahria Town - Ayesha Manzil,EV Bus,3,2E9B63,FFFFFF
+EV_5,KHI_MIXED,EV-5,DHA City - Sohrab Goth,EV Bus,3,2E9B63,FFFFFF
+Green_Line,KHI_MIXED,Green Line,Abdullah Chowk Station - Patel Para (Guru Mandir) Station,BRT,3,2E5FA3,FFFFFF
+Orange_Line,KHI_MIXED,Orange Line,Orangi Town Headquarter Terminal - Nagan Chorangi Station,BRT,3,2E5FA3,FFFFFF

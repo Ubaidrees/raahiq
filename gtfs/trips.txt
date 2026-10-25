@@ -1,1 +1,71 @@
 route_id,service_id,trip_id,trip_headsign,direction_id
+A_3,DAILY_ASSUMED,A_3_0,Dockyard,0
+A_25,DAILY_ASSUMED,A_25_0,Yousaf Goth,0
+C_1,DAILY_ASSUMED,C_1_0,Abdullah Goth,0
+D_1,DAILY_ASSUMED,D_1_0,Baldia,0
+D_7,DAILY_ASSUMED,D_7_0,New Sabzi Mandi,0
+D_11,DAILY_ASSUMED,D_11_0,Itihad Town,0
+F_11,DAILY_ASSUMED,F_11_0,Chungi Stop,0
+G_3,DAILY_ASSUMED,G_3_0,Muhajir Camp 8½,0
+G_7,DAILY_ASSUMED,G_7_0,Madras Chowk,0
+G_11,DAILY_ASSUMED,G_11_0,Kiran Hospital,0
+G_17,DAILY_ASSUMED,G_17_0,Gul City,0
+G_19,DAILY_ASSUMED,G_19_0,Madras Chowk,0
+G_27,DAILY_ASSUMED,G_27_0,Hub River Road,0
+H,DAILY_ASSUMED,H_0,Ibrahim Haidri,0
+N_4,DAILY_ASSUMED,N_4_0,Mehran Town,0
+N_5,DAILY_ASSUMED,N_5_0,Bilal Colony,0
+SL,DAILY_ASSUMED,SL_0,Landhi 89,0
+W_11,DAILY_ASSUMED,W_11_0,Keamari,0
+W_18,DAILY_ASSUMED,W_18_0,Rehri Goth,0
+W_22,DAILY_ASSUMED,W_22_0,Double Road Korangi 2½,0
+W_25,DAILY_ASSUMED,W_25_0,Itihad Town,0
+W_55,DAILY_ASSUMED,W_55_0,New Lyari,0
+X_8,DAILY_ASSUMED,X_8_0,Rohri Goth,0
+X_10,DAILY_ASSUMED,X_10_0,Misri Shah,0
+X_23,DAILY_ASSUMED,X_23_0,Hashim Goth,0
+Z_2,DAILY_ASSUMED,Z_2_0,Khayaban-e-Shaheed,0
+Z_18,DAILY_ASSUMED,Z_18_0,Itihad Town,0
+16,DAILY_ASSUMED,16_0,Bhens Colony 9,0
+Marwat,DAILY_ASSUMED,Marwat_0,Shireen Jinnah Colony,0
+Bilal,DAILY_ASSUMED,Bilal_0,BMDF Colony,0
+Gulistan,DAILY_ASSUMED,Gulistan_0,Sultan Masjid,0
+Ilyas,DAILY_ASSUMED,Ilyas_0,Itihad Town,0
+Masood,DAILY_ASSUMED,Masood_0,Khuda Ki Basti,0
+Khan,DAILY_ASSUMED,Khan_0,Abdullah Shah Ghazi,0
+Mashriq,DAILY_ASSUMED,Mashriq_0,Itihad Town,0
+Muslim,DAILY_ASSUMED,Muslim_0,Shereen Jinnah Colony,0
+New_Afridi,DAILY_ASSUMED,New_Afridi_0,Gulshan-e-Ghazi,0
+Super_Hasanzai,DAILY_ASSUMED,Super_Hasanzai_0,Shereen Jinnah Colony,0
+7_Star,DAILY_ASSUMED,7_Star_0,Khokhrapar,0
+Sheraz,DAILY_ASSUMED,Sheraz_0,Musharaf Colony,0
+MashAllah,DAILY_ASSUMED,MashAllah_0,Khairabad,0
+Abdullah,DAILY_ASSUMED,Abdullah_0,Qazafi Town,0
+AL_Qadri,DAILY_ASSUMED,AL_Qadri_0,Hawksbay,0
+Rind,DAILY_ASSUMED,Rind_0,Hub Chowki,0
+9_C,DAILY_ASSUMED,9_C_0,Ziauddin Hospital,0
+4_L,DAILY_ASSUMED,4_L_0,Bolton Market,0
+4_Q,DAILY_ASSUMED,4_Q_0,Bolton Market,0
+7_C,DAILY_ASSUMED,7_C_0,Dockyard,0
+11_C,DAILY_ASSUMED,11_C_0,Saadi Town,0
+20,DAILY_ASSUMED,20_0,Shereen Jinnah Colony,0
+51_Thatta,DAILY_ASSUMED,51_Thatta_0,Lee Market,0
+55,DAILY_ASSUMED,55_0,Lee Market,0
+R_1,DAILY_ASSUMED,R_1_0,Dockyard,0
+R_2,DAILY_ASSUMED,R_2_0,Indus Hospital,0
+R_3,DAILY_ASSUMED,R_3_0,Nasir Jump,0
+R_4,DAILY_ASSUMED,R_4_0,Keemari,0
+R_8,DAILY_ASSUMED,R_8_0,Tower,0
+R_9,DAILY_ASSUMED,R_9_0,Tower,0
+R_10,DAILY_ASSUMED,R_10_0,Ibrahim Hyderi,0
+R_11,DAILY_ASSUMED,R_11_0,Shereen Jinnah Colony,0
+R_12,DAILY_ASSUMED,R_12_0,Lucky Star Saddar,0
+R_13,DAILY_ASSUMED,R_13_0,Tower,0
+R_14,DAILY_ASSUMED,R_14_0,Tower,0
+EV_1,DAILY_ASSUMED,EV_1_0,Dolmen Mall Clifton,0
+EV_2,DAILY_ASSUMED,EV_2_0,Malir Halt,0
+EV_3,DAILY_ASSUMED,EV_3_0,Numaish,0
+EV_4,DAILY_ASSUMED,EV_4_0,Ayesha Manzil,0
+EV_5,DAILY_ASSUMED,EV_5_0,Sohrab Goth,0
+Green_Line,DAILY_ASSUMED,Green_Line_0,Patel Para (Guru Mandir) Station,0
+Orange_Line,DAILY_ASSUMED,Orange_Line_0,Nagan Chorangi Station,0
