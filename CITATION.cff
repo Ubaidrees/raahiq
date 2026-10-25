@@ -1,23 +1,25 @@
-# Fill in the DOI after publishing on Zenodo, then copy this file
-# to your GitHub repo root as CITATION.cff
 cff-version: 1.2.0
-title: "Karachi Public Transit Dataset (RaahIQ)"
+title: "Karachi Public Transit Dataset: Bus Routes and Geocoded Stops (RaahIQ)"
 version: 1.0.0
-doi: 10.5281/zenodo.XXXXXXX
-date-released: 2026-10-XX
+doi: 10.5281/zenodo.23638165
+date-released: 2026-10-25
 authors:
   - family-names: Idrees
     given-names: Muhammad Ubaid
     affiliation: "Dawood University of Engineering & Technology, Karachi"
-    orcid: "https://orcid.org/0000-0000-0000-0000"
+  - family-names: Farooqui
+    given-names: Hamza
+    affiliation: "Dawood University of Engineering & Technology, Karachi"
 license: CC-BY-4.0
 repository-code: "https://github.com/Ubaidrees/raahiq"
-url: "https://doi.org/10.5281/zenodo.XXXXXXX"
+url: "https://doi.org/10.5281/zenodo.23638165"
 keywords:
   - Karachi
   - public transit
   - bus routes
+  - GTFS
   - geocoded stops
   - urban mobility
   - open data
+  - Pakistan
 message: "If you use this dataset, please cite it as below."

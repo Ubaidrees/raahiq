@@ -1,4 +1,5 @@
 🗺️ RaahIQ — Karachi ka Smart AI Commute Planner
+
 An AI-powered smart commute planner built specifically for Karachi, Pakistan.
 Designed for the general public of Karachi to help them plan smarter daily commutes,
 save time, reduce fuel costs and avoid heavy traffic.
@@ -51,7 +52,7 @@ stop_coordinates.json: Pre-geocoded GPS coordinates for all unique stops.
 raahiq_karachi_gtfs.zip: The same dataset as a standard GTFS static feed (no timetable data exists for these informal routes — stop order only, no invented times).
 Usage & Citation
 If you use this dataset in your research or application, please cite it as:
-Muhammad Ubaid Idrees (2026). Karachi Public Transit Dataset (RaahIQ).
+> Idrees, M. U., & Farooqui, H. (2026). Karachi Public Transit Dataset: Bus Routes and Geocoded Stops (RaahIQ) (Version 1.0.0) [Data set]. Zenodo. https://doi.org/10.5281/zenodo.23638165
 Known Limitations
 Bus fares are not shown since live fare data isn't available.
 Weather input for the traffic-aware time suggestion currently defaults to "Clear" — live weather API integration is a future improvement.
